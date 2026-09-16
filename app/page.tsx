@@ -3,42 +3,38 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Lock, ShieldCheck, Store } from "lucide-react";
-
-const validUsers = {
-  admin: "admin",
-  seller: "saller",
-};
+import { adminLogin, sellerLogin } from "@/lib/api/auth";
+import { ApiError } from "@/lib/api/client";
+import { getSession, setSession } from "@/lib/api/session";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin");
+  const [role, setRole] = useState<"admin" | "seller">("admin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("wayfeir-user");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (parsed?.role === "admin") router.push("/admin/dashboard");
-      if (parsed?.role === "seller") router.push("/seller/dashboard");
-    }
+    const session = getSession();
+    if (session?.role === "Admin") router.push("/admin/dashboard");
+    if (session?.role === "Seller") router.push("/seller/dashboard");
   }, [router]);
 
-  const submitLogin = (event: React.FormEvent) => {
+  const submitLogin = async (event: React.FormEvent) => {
     event.preventDefault();
-
-    const expectedPassword = validUsers[username as keyof typeof validUsers];
-
-    if (!expectedPassword || password !== expectedPassword) {
-      setError("Invalid username or password. Try admin/admin or seller/saller");
-      return;
-    }
-
-    const role = username === "admin" ? "admin" : "seller";
-    localStorage.setItem("wayfeir-user", JSON.stringify({ username, role }));
     setError("");
+    setLoading(true);
 
-    router.push(role === "admin" ? "/admin/dashboard" : "/seller/dashboard");
+    try {
+      const auth = role === "admin" ? await adminLogin({ email, password }) : await sellerLogin({ email, password });
+      setSession(auth);
+      router.push(auth.role === "Admin" ? "/admin/dashboard" : "/seller/dashboard");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to sign in. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -79,12 +75,39 @@ export default function LoginPage() {
 
             <form onSubmit={submitLogin} className="space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Username</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Sign in as</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRole("admin")}
+                    className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
+                      role === "admin" ? "border-[#f0563f] bg-[#fdf2ef] text-[#f0563f]" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    Admin
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRole("seller")}
+                    className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
+                      role === "seller" ? "border-[#f0563f] bg-[#fdf2ef] text-[#f0563f]" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <Store className="h-4 w-4" />
+                    Seller
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
                 <input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value.trim().toLowerCase())}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white"
-                  placeholder="admin or seller"
+                  placeholder="you@example.com"
                 />
               </div>
 
@@ -103,9 +126,10 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#f0563f] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#dc4b34]"
+                disabled={loading}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#f0563f] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#dc4b34] disabled:opacity-60"
               >
-                Login
+                {loading ? "Signing in..." : "Login"}
                 <ArrowRight className="h-4 w-4" />
               </button>
 
@@ -116,26 +140,6 @@ export default function LoginPage() {
                 Create new seller account
               </a>
             </form>
-
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-slate-200 bg-white p-3">
-                <div className="mb-1 flex items-center gap-2 text-sm font-medium text-slate-800">
-                  <ShieldCheck className="h-4 w-4 text-[#f0563f]" />
-                  Admin
-                </div>
-                <div className="text-xs text-slate-500">username: admin</div>
-                <div className="text-xs text-slate-500">password: admin</div>
-              </div>
-
-              <div className="rounded-xl border border-slate-200 bg-white p-3">
-                <div className="mb-1 flex items-center gap-2 text-sm font-medium text-slate-800">
-                  <Store className="h-4 w-4 text-[#f0563f]" />
-                  Seller
-                </div>
-                <div className="text-xs text-slate-500">username: seller</div>
-                <div className="text-xs text-slate-500">password: saller</div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

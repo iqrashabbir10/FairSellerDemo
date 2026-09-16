@@ -2,6 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, CircleUserRound, FileText, MapPinned, ShieldCheck, UploadCloud } from "lucide-react";
+import { sellerRegister } from "@/lib/api/auth";
+import { ApiError } from "@/lib/api/client";
+import { setSession } from "@/lib/api/session";
+import type { IdentityDocumentType } from "@/lib/api/types";
+
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_FILE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".pdf"];
 
 const steps = [
   { title: "Basic details", icon: CircleUserRound },
@@ -14,6 +21,9 @@ type FormData = {
   email: string;
   phone: string;
   password: string;
+  confirmPassword: string;
+  termsAccepted: boolean;
+  invitationCode: string;
   shopName: string;
   shopCategory: string;
   shopDescription: string;
@@ -21,9 +31,9 @@ type FormData = {
   city: string;
   country: string;
   postalCode: string;
-  idType: string;
+  idType: IdentityDocumentType;
   idNumber: string;
-  fileName: string;
+  identityDocument: File | null;
 };
 
 const initialData: FormData = {
@@ -31,6 +41,9 @@ const initialData: FormData = {
   email: "",
   phone: "",
   password: "",
+  confirmPassword: "",
+  termsAccepted: false,
+  invitationCode: "",
   shopName: "",
   shopCategory: "Home & Living",
   shopDescription: "",
@@ -40,18 +53,40 @@ const initialData: FormData = {
   postalCode: "",
   idType: "NIC",
   idNumber: "",
-  fileName: "",
+  identityDocument: null,
 };
 
 export default function SellerRegisterPage() {
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<FormData>(initialData);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [fileError, setFileError] = useState("");
 
   const progress = useMemo(() => ((step + 1) / steps.length) * 100, [step]);
 
-  const updateField = (field: keyof FormData, value: string) => {
+  const updateField = (field: keyof FormData, value: string | boolean | File | null) => {
     setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const extension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+    if (!ALLOWED_FILE_EXTENSIONS.includes(extension)) {
+      setFileError("Only PNG, JPG or PDF files are accepted.");
+      updateField("identityDocument", null);
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setFileError("File size must be 5MB or smaller.");
+      updateField("identityDocument", null);
+      return;
+    }
+    setFileError("");
+    updateField("identityDocument", file);
   };
 
   const next = () => setStep((current) => Math.min(current + 1, steps.length));
@@ -59,16 +94,57 @@ export default function SellerRegisterPage() {
 
   const canProceed = () => {
     if (step === 0) {
-      return form.fullName && form.email && form.phone && form.password && form.shopName && form.shopDescription;
+      return (
+        form.fullName &&
+        form.email &&
+        form.phone &&
+        form.password &&
+        form.confirmPassword === form.password &&
+        form.shopName &&
+        form.shopCategory &&
+        form.shopDescription
+      );
     }
     if (step === 1) {
       return form.address && form.city && form.country && form.postalCode;
     }
-    return form.idNumber && form.fileName;
+    return form.idNumber && form.identityDocument && !fileError && form.termsAccepted;
   };
 
-  const handleSubmit = () => {
-    setSubmitted(true);
+  const handleSubmit = async () => {
+    setSubmitError("");
+    if (!form.identityDocument) {
+      setSubmitError("Please upload your identity document.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const auth = await sellerRegister({
+        fullName: form.fullName,
+        phoneNumber: form.phone,
+        email: form.email,
+        password: form.password,
+        confirmPassword: form.confirmPassword,
+        inviteCode: form.invitationCode,
+        termsAccepted: form.termsAccepted,
+        shopName: form.shopName,
+        shopCategory: form.shopCategory,
+        shopDescription: form.shopDescription,
+        address: form.address,
+        city: form.city,
+        country: form.country,
+        postalCode: form.postalCode,
+        idType: form.idType,
+        idNumber: form.idNumber,
+        identityDocument: form.identityDocument,
+      });
+      setSession(auth);
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(err instanceof ApiError ? err.message : "Unable to submit application. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -182,6 +258,16 @@ export default function SellerRegisterPage() {
               <input type="password" value={form.password} onChange={(e) => updateField("password", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="Create a password" />
             </div>
 
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Confirm password</label>
+              <input type="password" value={form.confirmPassword} onChange={(e) => updateField("confirmPassword", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="Re-enter your password" />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Invitation Code <span className="font-normal text-slate-400">(optional)</span></label>
+              <input value={form.invitationCode} onChange={(e) => updateField("invitationCode", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="Enter invitation code" />
+            </div>
+
             <div className="md:col-span-2">
               <label className="mb-2 block text-sm font-medium text-slate-700">Shop name</label>
               <input value={form.shopName} onChange={(e) => updateField("shopName", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="My Store" />
@@ -235,11 +321,11 @@ export default function SellerRegisterPage() {
             <div className="grid gap-5 md:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">Government ID type</label>
-                <select value={form.idType} onChange={(e) => updateField("idType", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white">
-                  <option>NIC</option>
-                  <option>Passport</option>
-                  <option>NICOP</option>
-                  <option>Other Government ID</option>
+                <select value={form.idType} onChange={(e) => updateField("idType", e.target.value as IdentityDocumentType)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white">
+                  <option value="NIC">NIC</option>
+                  <option value="Passport">Passport</option>
+                  <option value="NICOP">NICOP</option>
+                  <option value="Other Government ID">Other Government ID</option>
                 </select>
               </div>
 
@@ -260,20 +346,33 @@ export default function SellerRegisterPage() {
                 </div>
                 <input
                   type="file"
+                  accept=".png,.jpg,.jpeg,.pdf"
                   className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) updateField("fileName", file.name);
-                  }}
+                  onChange={handleFileChange}
                 />
               </label>
 
-              {form.fileName && (
+              {fileError && (
+                <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                  {fileError}
+                </div>
+              )}
+
+              {form.identityDocument && !fileError && (
                 <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
-                  Selected file: {form.fileName}
+                  Selected file: {form.identityDocument.name}
                 </div>
               )}
             </div>
+
+            <label className="flex items-center gap-2 text-sm text-slate-600">
+              <input type="checkbox" checked={form.termsAccepted} onChange={(e) => updateField("termsAccepted", e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-[#f0563f] focus:ring-[#f0563f]" />
+              I agree to the seller terms and conditions.
+            </label>
+
+            {submitError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{submitError}</div>
+            )}
           </div>
         )}
 
@@ -306,12 +405,12 @@ export default function SellerRegisterPage() {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={!canProceed()}
+              disabled={!canProceed() || submitting}
               className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white ${
-                canProceed() ? "bg-[#f0563f] hover:bg-[#dc4b34]" : "cursor-not-allowed bg-slate-300"
+                canProceed() && !submitting ? "bg-[#f0563f] hover:bg-[#dc4b34]" : "cursor-not-allowed bg-slate-300"
               }`}
             >
-              Submit application
+              {submitting ? "Submitting..." : "Submit application"}
               <ArrowRight className="h-4 w-4" />
             </button>
           )}

@@ -2,7 +2,12 @@
 
 import { ReactNode, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, ChartNoAxesCombined, CreditCard, House, Menu, MessageSquareText, Package, Settings, ShieldCheck, ShoppingBag, UserRound, Users, WalletCards, X } from "lucide-react";
+import { ChartNoAxesCombined, CreditCard, House, KeySquare, Menu, MessageSquareText, Package, ReceiptText, ScrollText, Settings, ShieldCheck, ShoppingBag, UserRound, Users, WalletCards, X } from "lucide-react";
+import { BackToTop } from "@/app/components/BackToTop";
+import { ThemePicker } from "@/app/components/ThemePicker";
+import { useAuthGuard } from "@/lib/api/useAuthGuard";
+import { clearSession } from "@/lib/api/session";
+import { logout } from "@/lib/api/auth";
 
 const navigation = [
   { label: "Dashboard", href: "/admin/dashboard", icon: House },
@@ -10,15 +15,18 @@ const navigation = [
   { label: "Sellers Products", href: "/admin/sellers-products", icon: ShoppingBag },
   { label: "Product Storehouse", href: "/admin/storehouse", icon: ChartNoAxesCombined },
   { label: "Orders", href: "/admin/orders", icon: ShoppingBag },
+  { label: "Payments", href: "/admin/payments", icon: ReceiptText },
   { label: "Money Withdraw", href: "/admin/withdrawals", icon: WalletCards },
   { label: "Conversations", href: "/admin/conversations", icon: MessageSquareText },
   { label: "View Seller Profile", href: "/admin/sellers", icon: Users },
   { label: "Customer Profiles", href: "/admin/customers", icon: UserRound },
   { label: "Add Money", href: "/admin/add-money", icon: CreditCard },
+  { label: "Invite Codes", href: "/admin/invite-codes", icon: KeySquare },
+  { label: "Audit Logs", href: "/admin/audit-logs", icon: ScrollText },
   { label: "Profile & Password", href: "/admin/profile", icon: Settings },
 ];
 
-function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+function Sidebar({ open, onClose, onLogout }: { open: boolean; onClose: () => void; onLogout: () => void }) {
   const pathname = usePathname();
 
   return (
@@ -50,11 +58,18 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
             );
           })}
         </nav>
+        <div className="border-t border-slate-200 p-3">
+          <div className="px-3 py-2 text-sm font-semibold text-slate-900">Admin Account</div>
+          <button onClick={onLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-900">
+            <ShieldCheck className="h-4 w-4" />
+            <span>Logout</span>
+          </button>
+        </div>
       </aside>
 
       {open && (
         <div className="fixed inset-0 z-40 bg-slate-900/40 lg:hidden" onClick={onClose}>
-          <div className="h-full w-[280px] bg-[#f7f5f3] p-3 shadow-xl" onClick={(event) => event.stopPropagation()}>
+          <div className="relative h-full w-[280px] bg-[#f7f5f3] p-3 shadow-xl" onClick={(event) => event.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between border-b border-slate-200 px-3 py-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f0563f] text-xs font-bold text-white">W</div>
@@ -83,6 +98,10 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
                 );
               })}
             </nav>
+            <div className="absolute bottom-4 left-3 right-3 border-t border-slate-200 pt-3">
+              <div className="px-3 py-2 text-sm font-semibold text-slate-900">Admin Account</div>
+              <button onClick={onLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-900"><ShieldCheck className="h-4 w-4" /><span>Logout</span></button>
+            </div>
           </div>
         </div>
       )}
@@ -93,19 +112,27 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
+  const ready = useAuthGuard("Admin");
 
-  const handleLogout = () => {
-    localStorage.removeItem("wayfeir-user");
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch {
+      // Ignore network errors on logout; clear local session regardless.
+    }
+    clearSession();
     router.push("/");
   };
+
+  if (!ready) return null;
 
   return (
     <div className="min-h-screen bg-[#f6f5f3] text-slate-900">
       <div className="mx-auto flex min-h-screen max-w-[1600px]">
-        <Sidebar open={mobileOpen} onClose={() => setMobileOpen(false)} />
+        <Sidebar open={mobileOpen} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
 
-        <div className="flex min-h-screen flex-1 flex-col">
-          <header className="flex h-20 items-center justify-between border-b border-slate-200 bg-[#f0563f] px-5 text-white shadow-sm sm:px-7">
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+          <header className="flex h-20 items-center justify-between border-b border-slate-200 bg-[var(--brand)] px-5 text-white shadow-sm sm:px-7">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setMobileOpen(true)}
@@ -121,22 +148,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </div>
             </div>
 
-            <div className="flex items-center gap-5 text-sm font-medium text-white/95">
-              <button className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 transition hover:bg-white/10">
-                <Bell className="h-4 w-4" />
-                <span>DASHBOARD</span>
-              </button>
-              <button
-                onClick={handleLogout}
-                className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 transition hover:bg-white/10"
-              >
-                <ShieldCheck className="h-4 w-4" />
-                <span>LOGOUT</span>
-              </button>
+            <div className="flex items-center gap-3 text-sm font-medium text-white/95">
+              <ThemePicker />
             </div>
           </header>
 
-          <main className="flex-1 p-5 sm:p-7">{children}</main>
+          <main className="min-w-0 flex-1 overflow-x-hidden p-5 sm:p-7">{children}</main>
+          <BackToTop />
         </div>
       </div>
     </div>

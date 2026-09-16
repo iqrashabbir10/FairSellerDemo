@@ -1,7 +1,12 @@
+"use client";
+
 import { Search } from "lucide-react";
 import { customers } from "@/lib/mock-data";
+import { useResponsiveView, ViewToggle } from "@/app/components/ViewToggle";
 
 export default function CustomersPage() {
+  const [view, setView] = useResponsiveView();
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -9,16 +14,17 @@ export default function CustomersPage() {
           <p className="text-sm font-medium text-slate-500">Customer base</p>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Customer Profiles</h1>
         </div>
-        <div className="relative w-full max-w-sm">
+        <div className="flex flex-wrap items-center gap-3"><div className="relative w-full max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[#f0563f]"
             placeholder="Search customers"
           />
         </div>
+        <ViewToggle value={view} onChange={setView} /></div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {view === "grid" ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{customers.map((customer) => <article key={customer.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><div><h2 className="font-semibold text-slate-900">{customer.name}</h2><p className="mt-1 text-sm text-slate-500">{customer.email}</p></div><span className="rounded-full bg-emerald-50 px-2 py-1 text-xs text-emerald-700">{customer.status}</span></div><div className="mt-5 grid grid-cols-2 gap-3 text-sm"><div><p className="text-slate-500">Orders</p><p className="font-semibold text-slate-800">{customer.ordersCount}</p></div><div><p className="text-slate-500">Total spent</p><p className="font-semibold text-slate-800">${customer.totalSpent}</p></div></div></article>)}</div> : <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1000px] text-left text-sm">
             <thead>
@@ -59,7 +65,7 @@ export default function CustomersPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
