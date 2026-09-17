@@ -1,15 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExternalLink, FileText, Mail, Phone, ShieldCheck, Store, X } from "lucide-react";
-import { getAdminSeller } from "@/lib/api/admin";
+import { ChevronLeft, ChevronRight, ExternalLink, FileText, Mail, Phone, ShieldCheck, Store, X } from "lucide-react";
+import { getAdminSeller, getSellerProducts } from "@/lib/api/admin";
 import { ApiError, resolveApiUrl } from "@/lib/api/client";
-import type { AdminSellerDto } from "@/lib/api/types";
+import type { AdminSellerDto, SellerProductDto } from "@/lib/api/types";
 
 export function SellerDetailModal({ sellerId, onClose }: { sellerId: string; onClose: () => void }) {
   const [seller, setSeller] = useState<AdminSellerDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [products, setProducts] = useState<SellerProductDto[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,6 +34,27 @@ export function SellerDetailModal({ sellerId, onClose }: { sellerId: string; onC
       cancelled = true;
     };
   }, [sellerId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setProductsLoading(true);
+    setProductsError("");
+    getSellerProducts(sellerId, page, 5)
+      .then((result) => {
+        if (cancelled) return;
+        setProducts(result.items);
+        setTotalPages(Math.max(1, result.totalPages));
+      })
+      .catch((err) => {
+        if (!cancelled) setProductsError(err instanceof ApiError ? err.message : "Failed to load seller's products.");
+      })
+      .finally(() => {
+        if (!cancelled) setProductsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sellerId, page]);
 
   const documentUrl = resolveApiUrl(seller?.documentUrl);
   const isPdf = documentUrl?.toLowerCase().endsWith(".pdf");
@@ -107,6 +133,49 @@ export function SellerDetailModal({ sellerId, onClose }: { sellerId: string; onC
             <div className="flex items-center gap-2 text-xs font-medium text-emerald-700">
               <ShieldCheck className="h-3.5 w-3.5" />
               {seller.approvedAtUtc ? "Verified account" : "Awaiting verification"}
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-2 text-sm font-medium text-slate-800">Product listings</div>
+              {productsLoading ? (
+                <p className="text-sm text-slate-500">Loading products…</p>
+              ) : productsError ? (
+                <p className="text-sm text-red-700">{productsError}</p>
+              ) : products.length === 0 ? (
+                <p className="text-sm text-slate-500">This seller has no product listings yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {products.map((product) => (
+                    <div key={product.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+                      <span className="font-medium text-slate-800">{product.productName}</span>
+                      <span className="text-slate-500">${product.sellingPrice.toFixed(2)} · {product.quantity} qty</span>
+                    </div>
+                  ))}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="text-xs text-slate-500">Page {page} of {totalPages}</span>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => setPage((p) => Math.max(1, p - 1))}
+                          disabled={page === 1}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                          aria-label="Previous page"
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                          disabled={page === totalPages}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                          aria-label="Next page"
+                        >
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         ) : null}

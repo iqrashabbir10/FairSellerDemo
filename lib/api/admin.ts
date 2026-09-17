@@ -12,6 +12,7 @@ import type {
   PagedResult,
   PendingPaymentDto,
   ProductDto,
+  SellerProductDto,
   SellerStatus,
   SupportMessageDto,
   UpdateOrderStatusPayload,
@@ -26,6 +27,12 @@ import type {
 
 export function getAdminDashboard() {
   return apiFetch<AdminDashboardDto>("/api/admin/dashboard");
+}
+
+export function getSellerProducts(sellerId: string, page = 1, pageSize = 20) {
+  return apiFetch<PagedResult<SellerProductDto>>(`/api/admin/sellers/${sellerId}/products`, {
+    query: { page, pageSize },
+  });
 }
 
 export function getAdminSellers(request?: PagedRequest & { status?: SellerStatus }) {

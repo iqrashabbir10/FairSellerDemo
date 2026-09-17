@@ -1,30 +1,34 @@
 "use client";
 
-import { Palette } from "lucide-react";
+import { Check, Palette } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const themes = [
+  { name: "Plum", value: "#8b4f70", hover: "#713f5b" },
   { name: "Coral", value: "#f0563f", hover: "#dc4b34" },
   { name: "Ocean", value: "#147d92", hover: "#0f6678" },
   { name: "Forest", value: "#2f8061", hover: "#25664d" },
-  { name: "Plum", value: "#8b4f70", hover: "#713f5b" },
 ];
+
+const DEFAULT_THEME = themes[0];
 
 export function ThemePicker() {
   const [open, setOpen] = useState(false);
+  const [activeValue, setActiveValue] = useState(DEFAULT_THEME.value);
 
   useEffect(() => {
     const saved = themes.find((theme) => theme.value === localStorage.getItem("wayfeir-theme"));
-    if (saved) {
-      document.documentElement.style.setProperty("--brand", saved.value);
-      document.documentElement.style.setProperty("--brand-hover", saved.hover);
-    }
+    const theme = saved ?? DEFAULT_THEME;
+    document.documentElement.style.setProperty("--brand", theme.value);
+    document.documentElement.style.setProperty("--brand-hover", theme.hover);
+    setActiveValue(theme.value);
   }, []);
 
   const selectTheme = (theme: (typeof themes)[number]) => {
     document.documentElement.style.setProperty("--brand", theme.value);
     document.documentElement.style.setProperty("--brand-hover", theme.hover);
     localStorage.setItem("wayfeir-theme", theme.value);
+    setActiveValue(theme.value);
     setOpen(false);
   };
 
@@ -47,9 +51,12 @@ export function ThemePicker() {
               type="button"
               onClick={() => selectTheme(theme)}
               aria-label={`${theme.name} theme`}
-              className="h-7 w-7 rounded-full border-2 border-white shadow ring-1 ring-slate-200 transition hover:scale-110"
+              aria-pressed={activeValue === theme.value}
+              className="relative flex h-7 w-7 items-center justify-center rounded-full border-2 border-white shadow ring-1 ring-slate-200 transition hover:scale-110"
               style={{ backgroundColor: theme.value }}
-            />
+            >
+              {activeValue === theme.value && <Check className="h-3.5 w-3.5 text-white drop-shadow" />}
+            </button>
           ))}
         </div>
       )}

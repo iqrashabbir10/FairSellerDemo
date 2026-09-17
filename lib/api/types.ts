@@ -202,6 +202,20 @@ export interface NotificationDto {
   createdAtUtc: string;
 }
 
+export interface AddSellerProductRequest {
+  productId: string;
+  quantity: number;
+}
+
+export interface SellerProductDto {
+  id: string;
+  sellerId: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  sellingPrice: number;
+}
+
 // ---- Admin ----
 
 export interface AdminDashboardDto {
