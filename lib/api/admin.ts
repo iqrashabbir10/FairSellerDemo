@@ -79,12 +79,28 @@ export function getAdminProduct(id: string) {
   return apiFetch<ProductDto>(`/api/admin/products/${id}`);
 }
 
+// Product save + image upload share the same endpoint via multipart/form-data.
+function buildProductFormData(payload: CreateProductPayload | UpdateProductPayload) {
+  const formData = new FormData();
+  formData.append("name", payload.name);
+  formData.append("description", payload.description);
+  formData.append("categoryId", payload.categoryId);
+  formData.append("supplierCost", String(payload.supplierCost));
+  formData.append("sellingPrice", String(payload.sellingPrice));
+  formData.append("stockQuantity", String(payload.stockQuantity));
+  if ("isAvailable" in payload) {
+    formData.append("isAvailable", String(payload.isAvailable));
+  }
+  payload.images?.forEach((image) => formData.append("images", image));
+  return formData;
+}
+
 export function createAdminProduct(payload: CreateProductPayload) {
-  return apiFetch<ProductDto>("/api/admin/products", { method: "POST", body: payload });
+  return apiFetch<ProductDto>("/api/admin/products", { method: "POST", body: buildProductFormData(payload) });
 }
 
 export function updateAdminProduct(id: string, payload: UpdateProductPayload) {
-  return apiFetch<ProductDto>(`/api/admin/products/${id}`, { method: "PUT", body: payload });
+  return apiFetch<ProductDto>(`/api/admin/products/${id}`, { method: "PUT", body: buildProductFormData(payload) });
 }
 
 export function deleteAdminProduct(id: string) {

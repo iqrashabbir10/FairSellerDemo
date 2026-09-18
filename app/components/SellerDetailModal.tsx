@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, ExternalLink, FileText, Mail, Phone, ShieldC
 import { getAdminSeller, getSellerProducts } from "@/lib/api/admin";
 import { ApiError, resolveApiUrl } from "@/lib/api/client";
 import type { AdminSellerDto, SellerProductDto } from "@/lib/api/types";
+import { ProductThumbnail } from "@/app/components/ProductThumbnail";
 
 export function SellerDetailModal({ sellerId, onClose }: { sellerId: string; onClose: () => void }) {
   const [seller, setSeller] = useState<AdminSellerDto | null>(null);
@@ -146,9 +147,14 @@ export function SellerDetailModal({ sellerId, onClose }: { sellerId: string; onC
               ) : (
                 <div className="space-y-2">
                   {products.map((product) => (
-                    <div key={product.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-                      <span className="font-medium text-slate-800">{product.productName}</span>
-                      <span className="text-slate-500">${product.sellingPrice.toFixed(2)} · {product.quantity} qty</span>
+                    <div key={product.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <ProductThumbnail name={product.productName} imageUrls={product.imageUrls} className="h-8 w-8" bare />
+                        <span className="font-medium text-slate-800">{product.productName}</span>
+                      </div>
+                      <span className="text-slate-500">
+                        Cost ${product.supplierCost.toFixed(2)} · Sell ${product.sellingPrice.toFixed(2)} · {product.quantity} qty
+                      </span>
                     </div>
                   ))}
                   {totalPages > 1 && (

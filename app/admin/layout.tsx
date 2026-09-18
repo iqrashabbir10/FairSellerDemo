@@ -2,12 +2,9 @@
 
 import { ReactNode, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ChartNoAxesCombined, CreditCard, House, KeySquare, LogOut, Menu, MessageSquareText, Package, ReceiptText, ScrollText, Settings, ShieldCheck, ShoppingBag, UserRound, Users, WalletCards, X } from "lucide-react";
+import { ChartNoAxesCombined, CreditCard, House, Menu, MessageSquareText, Package, Settings, ShieldCheck, ShoppingBag, UserRound, Users, WalletCards, X } from "lucide-react";
 import { BackToTop } from "@/app/components/BackToTop";
 import { ThemePicker } from "@/app/components/ThemePicker";
-import { useAuthGuard } from "@/lib/api/useAuthGuard";
-import { clearSession } from "@/lib/api/session";
-import { logout } from "@/lib/api/auth";
 
 const navigation = [
   { label: "Dashboard", href: "/admin/dashboard", icon: House },
@@ -15,14 +12,11 @@ const navigation = [
   { label: "Sellers Products", href: "/admin/sellers-products", icon: ShoppingBag },
   { label: "Product Storehouse", href: "/admin/storehouse", icon: ChartNoAxesCombined },
   { label: "Orders", href: "/admin/orders", icon: ShoppingBag },
-  { label: "Payments", href: "/admin/payments", icon: ReceiptText },
   { label: "Money Withdraw", href: "/admin/withdrawals", icon: WalletCards },
   { label: "Conversations", href: "/admin/conversations", icon: MessageSquareText },
   { label: "View Seller Profile", href: "/admin/sellers", icon: Users },
   { label: "Customer Profiles", href: "/admin/customers", icon: UserRound },
   { label: "Add Money", href: "/admin/add-money", icon: CreditCard },
-  { label: "Invite Codes", href: "/admin/invite-codes", icon: KeySquare },
-  { label: "Audit Logs", href: "/admin/audit-logs", icon: ScrollText },
   { label: "Profile & Password", href: "/admin/profile", icon: Settings },
 ];
 
@@ -112,19 +106,11 @@ function Sidebar({ open, onClose, onLogout }: { open: boolean; onClose: () => vo
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
-  const ready = useAuthGuard("Admin");
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch {
-      // Ignore network errors on logout; clear local session regardless.
-    }
-    clearSession();
+  const handleLogout = () => {
+    localStorage.removeItem("wayfeir-user");
     router.push("/");
   };
-
-  if (!ready) return null;
 
   return (
     <div className="min-h-screen bg-[#f6f5f3] text-slate-900">
@@ -132,7 +118,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <Sidebar open={mobileOpen} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
 
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200 bg-[var(--brand)] px-5 text-white shadow-sm sm:px-7">
+          <header className="flex h-20 items-center justify-between border-b border-slate-200 bg-[var(--brand)] px-5 text-white shadow-sm sm:px-7">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setMobileOpen(true)}
@@ -150,13 +136,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
             <div className="flex items-center gap-3 text-sm font-medium text-white/95">
               <ThemePicker />
-              <button
-                onClick={handleLogout}
-                aria-label="Logout"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/30 bg-white/10 transition hover:bg-white/20"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
             </div>
           </header>
 

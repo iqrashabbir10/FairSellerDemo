@@ -8,7 +8,7 @@ import { getSellerProfile } from "@/lib/api/seller";
 import { ApiError } from "@/lib/api/client";
 import type { SellerProductDto } from "@/lib/api/types";
 import { useAuthGuard } from "@/lib/api/useAuthGuard";
-import { ProductImage } from "@/app/components/ProductImage";
+import { ProductThumbnail } from "@/app/components/ProductThumbnail";
 
 const PAGE_SIZE = 9;
 
@@ -83,12 +83,19 @@ export default function SellerMyListingsPage() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {paged.map((item) => (
             <article key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <ProductImage name={item.productName} />
+              <ProductThumbnail name={item.productName} imageUrls={item.imageUrls} className="h-28 w-full" />
               <h2 className="font-semibold text-slate-900">{item.productName}</h2>
-              <div className="mt-4 flex justify-between text-sm">
-                <span className="font-medium text-slate-900">${item.sellingPrice.toFixed(2)}</span>
-                <span className="text-slate-500">{item.quantity} listed</span>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <div className="rounded-lg bg-slate-50 px-2.5 py-2">
+                  <div className="text-xs text-slate-500">Supplier Cost</div>
+                  <div className="font-semibold text-slate-800">${item.supplierCost.toFixed(2)}</div>
+                </div>
+                <div className="rounded-lg bg-slate-50 px-2.5 py-2">
+                  <div className="text-xs text-slate-500">Selling Price</div>
+                  <div className="font-semibold text-slate-800">${item.sellingPrice.toFixed(2)}</div>
+                </div>
               </div>
+              <div className="mt-2 text-sm text-slate-500">{item.quantity} listed</div>
             </article>
           ))}
         </div>
@@ -97,15 +104,21 @@ export default function SellerMyListingsPage() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                <th className="px-4 py-3 font-medium">Image</th>
                 <th className="px-4 py-3 font-medium">Product</th>
-                <th className="px-4 py-3 font-medium text-right">Price</th>
+                <th className="px-4 py-3 font-medium text-right">Supplier Cost</th>
+                <th className="px-4 py-3 font-medium text-right">Selling Price</th>
                 <th className="px-4 py-3 font-medium text-right">Quantity listed</th>
               </tr>
             </thead>
             <tbody>
               {paged.map((item) => (
                 <tr key={item.id} className="border-b border-slate-200 last:border-b-0">
+                  <td className="px-4 py-3">
+                    <ProductThumbnail name={item.productName} imageUrls={item.imageUrls} className="h-10 w-10" bare />
+                  </td>
                   <td className="px-4 py-3 font-medium text-slate-800">{item.productName}</td>
+                  <td className="px-4 py-3 text-right text-slate-600">${item.supplierCost.toFixed(2)}</td>
                   <td className="px-4 py-3 text-right font-medium text-slate-800">${item.sellingPrice.toFixed(2)}</td>
                   <td className="px-4 py-3 text-right text-slate-600">{item.quantity}</td>
                 </tr>

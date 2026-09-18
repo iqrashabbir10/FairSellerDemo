@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { getSellerProductById } from "@/lib/api/sellerProducts";
 import { ApiError } from "@/lib/api/client";
 import type { ProductDto } from "@/lib/api/types";
+import { ProductThumbnail } from "@/app/components/ProductThumbnail";
 
 export function ProductDetailModal({ productId, onClose }: { productId: string; onClose: () => void }) {
   const [product, setProduct] = useState<ProductDto | null>(null);
@@ -46,6 +47,7 @@ export function ProductDetailModal({ productId, onClose }: { productId: string; 
           <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
         ) : product ? (
           <div className="space-y-3 text-sm">
+            <ProductThumbnail name={product.name} imageUrls={product.imageUrls} className="h-40 w-full" />
             <div>
               <div className="text-xs font-medium uppercase text-slate-400">Name</div>
               <div className="font-semibold text-slate-900">{product.name}</div>
@@ -58,9 +60,13 @@ export function ProductDetailModal({ productId, onClose }: { productId: string; 
               <div className="text-xs font-medium uppercase text-slate-400">Description</div>
               <p className="text-slate-700">{product.description ?? "No description provided."}</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <div className="text-xs font-medium uppercase text-slate-400">Price</div>
+                <div className="text-xs font-medium uppercase text-slate-400">Supplier Cost</div>
+                <div className="font-semibold text-slate-900">${product.supplierCost.toFixed(2)}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium uppercase text-slate-400">Selling Price</div>
                 <div className="font-semibold text-slate-900">${product.sellingPrice.toFixed(2)}</div>
               </div>
               <div>

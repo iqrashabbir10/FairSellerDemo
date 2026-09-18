@@ -20,7 +20,7 @@ function paletteFor(name: string) {
   return PALETTES[Math.abs(hash) % PALETTES.length];
 }
 
-export function ProductImage({ name, className = "h-28" }: { name: string; className?: string }) {
+export function ProductImage({ name, className = "h-28", bare = false }: { name: string; className?: string; bare?: boolean }) {
   const [from, to] = paletteFor(name);
   const initials = name
     .split(/\s+/)
@@ -31,7 +31,7 @@ export function ProductImage({ name, className = "h-28" }: { name: string; class
 
   return (
     <div
-      className={`relative mb-4 flex items-center justify-center overflow-hidden rounded-xl ${className}`}
+      className={`relative ${bare ? "" : "mb-4"} flex items-center justify-center overflow-hidden rounded-xl ${className}`}
       style={{ background: `linear-gradient(135deg, ${from}, ${to}22)` }}
     >
       <Package className="h-8 w-8" style={{ color: to }} strokeWidth={1.5} />

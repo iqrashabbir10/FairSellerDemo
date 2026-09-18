@@ -127,9 +127,11 @@ export interface ProductDto {
   description: string;
   categoryId: string;
   categoryName: string;
+  supplierCost: number;
   sellingPrice: number;
   stockQuantity: number;
   isAvailable: boolean;
+  imageUrls?: string[];
 }
 
 export interface CategoryDto {
@@ -213,7 +215,44 @@ export interface SellerProductDto {
   productId: string;
   productName: string;
   quantity: number;
+  supplierCost: number;
   sellingPrice: number;
+  imageUrls?: string[];
+}
+
+// ---- Public checkout / order creation ----
+
+export interface CreateOrderCustomerPayload {
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  location: string | null;
+}
+
+export interface CreateOrderItemPayload {
+  sellerProductId: string;
+  productId: string;
+  quantity: number;
+}
+
+export interface CreateOrderPayload {
+  sellerId: string;
+  customer: CreateOrderCustomerPayload;
+  items: CreateOrderItemPayload[];
+}
+
+// Backend creates one order record per item, so POST /api/orders returns an array.
+export interface CreatedOrderDto {
+  id: string;
+  orderNumber: string;
+  sellerId: string;
+  productId: string;
+  quantity: number;
+  sellingPrice: number;
+  expectedProfit: number;
+  status: OrderStatus;
+  createdAtUtc: string;
 }
 
 // ---- Admin ----
@@ -285,6 +324,7 @@ export interface CreateProductPayload {
   supplierCost: number;
   sellingPrice: number;
   stockQuantity: number;
+  images?: File[];
 }
 
 export interface UpdateProductPayload {
@@ -295,6 +335,7 @@ export interface UpdateProductPayload {
   sellingPrice: number;
   stockQuantity: number;
   isAvailable: boolean;
+  images?: File[];
 }
 
 export interface PendingPaymentDto {
