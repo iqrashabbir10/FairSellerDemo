@@ -40,7 +40,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f6f5f3] p-4 sm:p-6">
       <div className="grid w-full max-w-5xl overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_20px_70px_rgba(15,23,42,0.08)] lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="bg-[#f0563f] p-8 text-white sm:p-10">
+        <div className="bg-[var(--brand)] p-8 text-white sm:p-10">
           <div className="mb-10 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-lg font-bold">W</div>
             <div className="text-2xl font-semibold tracking-tight">WayFeir</div>
@@ -51,20 +51,19 @@ export default function LoginPage() {
             Sell smarter, manage faster.
           </h1>
           <p className="mt-4 max-w-md text-base text-white/85">
-            Sign in as admin or seller to view the mock marketplace dashboard.
+            Sign in as admin or seller to access your marketplace dashboard.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
             <div className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium">Admin panel</div>
             <div className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium">Seller onboarding</div>
-            <div className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium">Mock data</div>
           </div>
         </div>
 
         <div className="flex items-center justify-center p-6 sm:p-10">
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-[#fffdfc] p-5 shadow-sm sm:p-7">
             <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f0563f]/10 text-[#f0563f]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--brand)]/10 text-[var(--brand)]">
                 <Lock className="h-5 w-5" />
               </div>
               <div>
@@ -81,7 +80,7 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => setRole("admin")}
                     className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
-                      role === "admin" ? "border-[#f0563f] bg-[#fdf2ef] text-[#f0563f]" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      role === "admin" ? "border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                     }`}
                   >
                     <ShieldCheck className="h-4 w-4" />
@@ -91,7 +90,7 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => setRole("seller")}
                     className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
-                      role === "seller" ? "border-[#f0563f] bg-[#fdf2ef] text-[#f0563f]" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      role === "seller" ? "border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                     }`}
                   >
                     <Store className="h-4 w-4" />
@@ -106,7 +105,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white"
                   placeholder="you@example.com"
                 />
               </div>
@@ -117,7 +116,7 @@ export default function LoginPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white"
                   placeholder="Enter password"
                 />
               </div>
@@ -127,7 +126,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#f0563f] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#dc4b34] disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-hover)] disabled:opacity-60"
               >
                 {loading ? "Signing in..." : "Login"}
                 <ArrowRight className="h-4 w-4" />

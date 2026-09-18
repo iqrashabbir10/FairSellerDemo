@@ -26,7 +26,6 @@ type FormData = {
   invitationCode: string;
   shopName: string;
   shopCategory: string;
-  shopDescription: string;
   address: string;
   city: string;
   country: string;
@@ -46,12 +45,11 @@ const initialData: FormData = {
   invitationCode: "",
   shopName: "",
   shopCategory: "Home & Living",
-  shopDescription: "",
   address: "",
-  city: "",
-  country: "United Arab Emirates",
+  city: "Lahore",
+  country: "Pakistan",
   postalCode: "",
-  idType: "NIC",
+  idType: "CNIC",
   idNumber: "",
   identityDocument: null,
 };
@@ -101,8 +99,7 @@ export default function SellerRegisterPage() {
         form.password &&
         form.confirmPassword === form.password &&
         form.shopName &&
-        form.shopCategory &&
-        form.shopDescription
+        form.shopCategory
       );
     }
     if (step === 1) {
@@ -129,7 +126,7 @@ export default function SellerRegisterPage() {
         termsAccepted: form.termsAccepted,
         shopName: form.shopName,
         shopCategory: form.shopCategory,
-        shopDescription: form.shopDescription,
+        shopDescription: "",
         address: form.address,
         city: form.city,
         country: form.country,
@@ -152,8 +149,8 @@ export default function SellerRegisterPage() {
       <main className="flex min-h-screen items-center justify-center bg-[#f6f5f3] px-4 py-8">
         <div className="w-full max-w-2xl rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_20px_70px_rgba(15,23,42,0.08)] sm:p-8">
           <div className="flex justify-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#f0563f]/10 text-[#f0563f]">
-              <CheckCircle2 className="h-10 w-10" />
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--brand)]/10 text-[var(--brand)]">
+              <CheckCircle2 className="h-10 w-10" /> 
             </div>
           </div>
 
@@ -165,9 +162,9 @@ export default function SellerRegisterPage() {
             </p>
           </div>
 
-          <div className="mt-8 rounded-2xl border border-slate-200 bg-[#fff7f4] p-5">
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-[var(--brand)]/5 p-5">
             <div className="flex items-center gap-3">
-              <ShieldCheck className="h-5 w-5 text-[#f0563f]" />
+              <ShieldCheck className="h-5 w-5 text-[var(--brand)]" />
               <div className="font-medium text-slate-800">Verification status</div>
             </div>
             <div className="mt-3 text-sm text-slate-600">
@@ -180,10 +177,10 @@ export default function SellerRegisterPage() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to login
             </a>
-            <a href="/seller/dashboard" className="inline-flex items-center justify-center rounded-xl bg-[#f0563f] px-5 py-3 text-sm font-semibold text-white hover:bg-[#dc4b34]">
+            {/* <a href="/seller/dashboard" className="inline-flex items-center justify-center rounded-xl bg-[var(--brand)] px-5 py-3 text-sm font-semibold text-white hover:bg-[var(--brand-hover)]">
               View seller demo
               <ArrowRight className="ml-2 h-4 w-4" />
-            </a>
+            </a> */}
           </div>
         </div>
       </main>
@@ -198,7 +195,7 @@ export default function SellerRegisterPage() {
             <div className="text-sm font-medium uppercase tracking-[0.2em] text-slate-500">Seller onboarding</div>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">Create your seller account</h1>
           </div>
-          <a href="/" className="text-sm font-medium text-[#f0563f] hover:text-[#dc4b34]">Back to login</a>
+          <a href="/" className="text-sm font-medium text-[var(--brand)] hover:text-[var(--brand-hover)]">Back to login</a>
         </div>
 
         <div className="mb-8">
@@ -207,7 +204,7 @@ export default function SellerRegisterPage() {
             <span>{Math.round(progress)}%</span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
-            <div className="h-full rounded-full bg-[#f0563f] transition-all duration-300" style={{ width: `${progress}%` }} />
+            <div className="h-full rounded-full bg-[var(--brand)] transition-all duration-300" style={{ width: `${progress}%` }} />
           </div>
         </div>
 
@@ -221,10 +218,10 @@ export default function SellerRegisterPage() {
               <div
                 key={item.title}
                 className={`flex items-center gap-3 rounded-2xl border p-3 ${
-                  active ? "border-[#f0563f] bg-[#fff5f2]" : done ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"
+                  active ? "border-[var(--brand)] bg-[var(--brand)]/5" : done ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"
                 }`}
               >
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${active ? "bg-[#f0563f] text-white" : "bg-white text-slate-600"}`}>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${active ? "bg-[var(--brand)] text-white" : "bg-white text-slate-600"}`}>
                   <Icon className="h-4 w-4" />
                 </div>
                 <div>
@@ -240,42 +237,42 @@ export default function SellerRegisterPage() {
           <div className="grid gap-5 md:grid-cols-2">
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">Full name</label>
-              <input value={form.fullName} onChange={(e) => updateField("fullName", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="Enter your full name" />
+              <input value={form.fullName} onChange={(e) => updateField("fullName", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white" placeholder="Enter your full name" />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
-              <input type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="you@example.com" />
+              <input type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white" placeholder="you@example.com" />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">Phone</label>
-              <input value={form.phone} onChange={(e) => updateField("phone", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="+971 55 000 0000" />
+              <input value={form.phone} onChange={(e) => updateField("phone", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white" placeholder="+971 55 000 0000" />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">Password</label>
-              <input type="password" value={form.password} onChange={(e) => updateField("password", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="Create a password" />
+              <input type="password" value={form.password} onChange={(e) => updateField("password", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white" placeholder="Create a password" />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">Confirm password</label>
-              <input type="password" value={form.confirmPassword} onChange={(e) => updateField("confirmPassword", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="Re-enter your password" />
+              <input type="password" value={form.confirmPassword} onChange={(e) => updateField("confirmPassword", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white" placeholder="Re-enter your password" />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Invitation Code <span className="font-normal text-slate-400">(optional)</span></label>
-              <input value={form.invitationCode} onChange={(e) => updateField("invitationCode", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="Enter invitation code" />
+              <label className="mb-2 block text-sm font-medium text-slate-700">Invitation Code</label>
+              <input value={form.invitationCode} onChange={(e) => updateField("invitationCode", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white" placeholder="Enter invitation code" />
             </div>
 
-            <div className="md:col-span-2">
+            <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">Shop name</label>
-              <input value={form.shopName} onChange={(e) => updateField("shopName", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="My Store" />
+              <input value={form.shopName} onChange={(e) => updateField("shopName", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white" placeholder="My Store" />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">Shop category</label>
-              <select value={form.shopCategory} onChange={(e) => updateField("shopCategory", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white">
+              <select value={form.shopCategory} onChange={(e) => updateField("shopCategory", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white">
                 <option>Home & Living</option>
                 <option>Electronics</option>
                 <option>Fashion</option>
@@ -285,10 +282,7 @@ export default function SellerRegisterPage() {
               </select>
             </div>
 
-            <div className="md:col-span-2">
-              <label className="mb-2 block text-sm font-medium text-slate-700">Shop description</label>
-              <textarea value={form.shopDescription} onChange={(e) => updateField("shopDescription", e.target.value)} rows={4} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="Tell us what you sell and your brand story" />
-            </div>
+           
           </div>
         )}
 
@@ -296,22 +290,22 @@ export default function SellerRegisterPage() {
           <div className="grid gap-5 md:grid-cols-2">
             <div className="md:col-span-2">
               <label className="mb-2 block text-sm font-medium text-slate-700">Business address</label>
-              <input value={form.address} onChange={(e) => updateField("address", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="Street name, building, unit number" />
+              <input value={form.address} onChange={(e) => updateField("address", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white" placeholder="Street name, building, unit number" />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">City</label>
-              <input value={form.city} onChange={(e) => updateField("city", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="Dubai" />
+              <input value={form.city} onChange={(e) => updateField("city", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white" placeholder="Dubai" />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">Country</label>
-              <input value={form.country} onChange={(e) => updateField("country", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="Country" />
+              <input value={form.country} onChange={(e) => updateField("country", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white" placeholder="Country" />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">Postal code</label>
-              <input value={form.postalCode} onChange={(e) => updateField("postalCode", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="00000" />
+              <input value={form.postalCode} onChange={(e) => updateField("postalCode", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white" placeholder="00000" />
             </div>
           </div>
         )}
@@ -321,23 +315,23 @@ export default function SellerRegisterPage() {
             <div className="grid gap-5 md:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">Government ID type</label>
-                <select value={form.idType} onChange={(e) => updateField("idType", e.target.value as IdentityDocumentType)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white">
-                  <option value="NIC">NIC</option>
+                <select value={form.idType} onChange={(e) => updateField("idType", e.target.value as IdentityDocumentType)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white">
+                  <option value="CNIC">CNIC</option>
                   <option value="Passport">Passport</option>
-                  <option value="NICOP">NICOP</option>
+                  <option value="Driving License">Driving License</option>
                   <option value="Other Government ID">Other Government ID</option>
                 </select>
               </div>
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">ID number</label>
-                <input value={form.idNumber} onChange={(e) => updateField("idNumber", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f0563f] focus:bg-white" placeholder="Enter ID number" />
+                <input value={form.idNumber} onChange={(e) => updateField("idNumber", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white" placeholder="Enter ID number" />
               </div>
             </div>
 
             <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
               <label className="flex cursor-pointer flex-col items-center justify-center gap-3 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#f0563f] shadow-sm ring-1 ring-slate-200">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-[var(--brand)] shadow-sm ring-1 ring-slate-200">
                   <UploadCloud className="h-6 w-6" />
                 </div>
                 <div>
@@ -366,7 +360,7 @@ export default function SellerRegisterPage() {
             </div>
 
             <label className="flex items-center gap-2 text-sm text-slate-600">
-              <input type="checkbox" checked={form.termsAccepted} onChange={(e) => updateField("termsAccepted", e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-[#f0563f] focus:ring-[#f0563f]" />
+              <input type="checkbox" checked={form.termsAccepted} onChange={(e) => updateField("termsAccepted", e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-[var(--brand)] focus:ring-[var(--brand)]" />
               I agree to the seller terms and conditions.
             </label>
 
@@ -395,7 +389,7 @@ export default function SellerRegisterPage() {
               onClick={next}
               disabled={!canProceed()}
               className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white ${
-                canProceed() ? "bg-[#f0563f] hover:bg-[#dc4b34]" : "cursor-not-allowed bg-slate-300"
+                canProceed() ? "bg-[var(--brand)] hover:bg-[var(--brand-hover)]" : "cursor-not-allowed bg-slate-300"
               }`}
             >
               Next
@@ -407,7 +401,7 @@ export default function SellerRegisterPage() {
               onClick={handleSubmit}
               disabled={!canProceed() || submitting}
               className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white ${
-                canProceed() && !submitting ? "bg-[#f0563f] hover:bg-[#dc4b34]" : "cursor-not-allowed bg-slate-300"
+                canProceed() && !submitting ? "bg-[var(--brand)] hover:bg-[var(--brand-hover)]" : "cursor-not-allowed bg-slate-300"
               }`}
             >
               {submitting ? "Submitting..." : "Submit application"}

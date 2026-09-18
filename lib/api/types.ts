@@ -26,7 +26,7 @@ export type UserRole = "Seller" | "Admin";
 
 export type SellerStatus = "Pending" | "Approved" | "Rejected" | "Frozen";
 
-export type IdentityDocumentType = "NIC" | "Passport" | "NICOP" | "Other Government ID";
+export type IdentityDocumentType = "CNIC" | "Passport" | "Driving License" | "Other Government ID";
 
 export type OrderStatus =
   | "Pending"
