@@ -47,7 +47,7 @@ export type WithdrawalStatus = "Pending" | "Approved" | "Rejected" | "Paid";
 
 export type WithdrawalMethod = "BankTransfer" | "CashOnHand" | "MobileWallet";
 
-export type SupportStatus = "Open" | "Pending" | "Resolved";
+export type SupportStatus = "Open" | "Pending" | "Resolved" | "Closed";
 
 export type WalletTransactionType =
   | "Credit"
@@ -186,6 +186,19 @@ export interface SupportConversationDto {
   sellerId: string;
   status: SupportStatus;
   createdAtUtc: string;
+}
+
+// Admin's GET /api/admin/support list only — already includes seller/shop names + last message
+// preview so the inbox doesn't need a separate per-seller lookup.
+export interface SupportConversationSummaryDto {
+  id: string;
+  sellerId: string;
+  sellerName: string;
+  shopName: string;
+  status: SupportStatus;
+  createdAtUtc: string;
+  lastMessageAtUtc: string | null;
+  lastMessage: string | null;
 }
 
 export interface SupportMessageDto {

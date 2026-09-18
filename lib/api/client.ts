@@ -1,6 +1,6 @@
 // Shared fetch helper that unwraps the ApiResponse<T> envelope used by every endpoint.
 import type { ApiResponse, PagedRequest } from "./types";
-import { getSession } from "./session";
+import { clearSession, getSession } from "./session";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://localhost:55980";
 
@@ -83,6 +83,14 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
 
   if (!response.ok || !payload || payload.success === false) {
     const message = payload?.message || `Request failed with status ${response.status}`;
+    // Session expired/invalid on an authenticated request — force back to login instead of
+    // leaving the page stuck on a raw 401 error.
+    if (response.status === 401 && auth) {
+      clearSession();
+      if (typeof window !== "undefined" && window.location.pathname !== "/") {
+        window.location.href = "/";
+      }
+    }
     throw new ApiError(message, response.status, payload?.errors ?? []);
   }
 

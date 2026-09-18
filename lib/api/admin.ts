@@ -14,6 +14,7 @@ import type {
   ProductDto,
   SellerProductDto,
   SellerStatus,
+  SupportConversationSummaryDto,
   SupportMessageDto,
   UpdateOrderStatusPayload,
   UpdateProductPayload,
@@ -137,6 +138,11 @@ export function updateWithdrawalStatus(id: string, payload: UpdateWithdrawalStat
     method: "PUT",
     body: payload,
   });
+}
+
+// Plain array, not paginated — already sorted by most recent activity by the backend.
+export function getAdminSupportConversations() {
+  return apiFetch<SupportConversationSummaryDto[]>("/api/admin/support");
 }
 
 export function getAdminSupportMessages(conversationId: string, request?: PagedRequest) {

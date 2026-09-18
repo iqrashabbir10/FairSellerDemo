@@ -47,8 +47,9 @@ export function createSellerWithdrawal(payload: CreateWithdrawalPayload) {
   return apiFetch<WithdrawalDto>("/api/seller/withdrawals", { method: "POST", body: payload });
 }
 
-export function getSellerSupportConversations(request?: PagedRequest) {
-  return apiFetch<PagedResult<SupportConversationDto>>("/api/seller/support", { query: toPagedQuery(request) });
+// Plain array, not paginated — resolve the seller's own conversation(s) before sending anything.
+export function getSellerSupportConversations() {
+  return apiFetch<SupportConversationDto[]>("/api/seller/support");
 }
 
 export function createSellerSupportConversation() {
@@ -59,6 +60,12 @@ export function sendSellerSupportMessage(conversationId: string, message: string
   return apiFetch<SupportMessageDto>(`/api/seller/support/${conversationId}/messages`, {
     method: "POST",
     body: { message },
+  });
+}
+
+export function getSellerSupportMessages(conversationId: string, request?: PagedRequest) {
+  return apiFetch<PagedResult<SupportMessageDto>>(`/api/seller/support/${conversationId}/messages`, {
+    query: toPagedQuery(request),
   });
 }
 
