@@ -2,9 +2,10 @@
 
 import { ReactNode, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ChartNoAxesCombined, CreditCard, House, KeyRound, Menu, MessageSquareText, Package, Settings, ShieldCheck, ShoppingBag, Tags, UserRound, Users, WalletCards, X, LogOut } from "lucide-react";
+import { ChartNoAxesCombined, CreditCard, House, KeyRound, Menu, MessageSquareText, Package, Settings, ShoppingBag, Tags, UserRound, Users, WalletCards, X, LogOut } from "lucide-react";
 import { clearSession } from "@/lib/api/session";
 import { logout } from "@/lib/api/auth";
+import { SidebarUser } from "@/app/components/SidebarUser";
 import { BackToTop } from "@/app/components/BackToTop";
 import { ThemePicker } from "@/app/components/ThemePicker";
 
@@ -57,9 +58,9 @@ function Sidebar({ open, onClose, onLogout }: { open: boolean; onClose: () => vo
           })}
         </nav>
         <div className="border-t border-slate-200 p-3">
-          <div className="px-3 py-2 text-sm font-semibold text-slate-900">Admin Account</div>
+          <SidebarUser role="Admin" />
           <button onClick={onLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-900">
-            <ShieldCheck className="h-4 w-4" />
+            <LogOut className="h-4 w-4" />
             <span>Logout</span>
           </button>
         </div>
@@ -97,8 +98,8 @@ function Sidebar({ open, onClose, onLogout }: { open: boolean; onClose: () => vo
               })}
             </nav>
             <div className="absolute bottom-4 left-3 right-3 border-t border-slate-200 pt-3">
-              <div className="px-3 py-2 text-sm font-semibold text-slate-900">Admin Account</div>
-              <button onClick={onLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-900"><ShieldCheck className="h-4 w-4" /><span>Logout</span></button>
+              <SidebarUser role="Admin" />
+              <button onClick={onLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-900"><LogOut className="h-4 w-4" /><span>Logout</span></button>
             </div>
           </div>
         </div>

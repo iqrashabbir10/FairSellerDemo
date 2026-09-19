@@ -103,7 +103,6 @@ export function ProductFormModal({
   const [description, setDescription] = useState(product?.description ?? "");
   const [categoryId, setCategoryId] = useState(product?.categoryId ?? categories[0]?.id ?? "");
   const [basePrice, setBasePrice] = useState(product ? String(product.supplierCost) : "");
-  const [isAvailable, setIsAvailable] = useState(product?.isAvailable ?? true);
   const [images, setImages] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -126,7 +125,7 @@ export function ProductFormModal({
     const base = { name: name.trim(), description, categoryId, supplierCost: baseValue, sellingPrice: sellerPrice };
     try {
       if (product) {
-        await updateAdminProduct(product.id, { ...base, stockQuantity: product.stockQuantity, isAvailable });
+        await updateAdminProduct(product.id, { ...base, stockQuantity: product.stockQuantity, isAvailable: true });
       } else {
         await createAdminProduct({ ...base, images });
       }
@@ -183,12 +182,6 @@ export function ProductFormModal({
               <input readOnly tabIndex={-1} value={sellerPrice === null ? "" : sellerPrice.toFixed(2)} placeholder="Auto-calculated" className={`${inputClass} cursor-not-allowed bg-slate-100`} />
             </label>
           </div>
-          {product && (
-            <label className="flex items-center gap-2 text-slate-700">
-              <input type="checkbox" checked={isAvailable} onChange={(e) => setIsAvailable(e.target.checked)} />
-              Available
-            </label>
-          )}
           <div>
             <span className="mb-1 block font-medium text-slate-700">Images</span>
             {product ? (

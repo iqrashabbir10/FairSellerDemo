@@ -103,6 +103,8 @@ export function createAdminProduct(payload: CreateProductPayload) {
   formData.append("supplierCost", String(payload.supplierCost));
   formData.append("sellingPrice", String(payload.sellingPrice));
   formData.append("stockQuantity", String(payload.stockQuantity ?? 0));
+  // Availability is no longer editable in the UI; products are always created as available.
+  formData.append("isAvailable", "true");
   payload.images?.forEach((image) => formData.append("images", image));
   return apiFetch<ProductDto>("/api/admin/products", { method: "POST", body: formData });
 }

@@ -134,13 +134,13 @@ export default function AdminProductsPage() {
       ) : view === "grid" ? (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((product) => (
-            <ProductCard key={product.id} product={product} footer={actions(product)} />
+            <ProductCard key={product.id} product={product} showStatus={false} footer={actions(product)} />
           ))}
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px] text-left text-sm">
+            <table className="w-full min-w-[700px] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
                   <th className="px-4 py-3 font-medium">Image</th>
@@ -148,7 +148,6 @@ export default function AdminProductsPage() {
                   <th className="px-4 py-3 font-medium">Category</th>
                   <th className="px-4 py-3 font-medium text-right">Base Price</th>
                   <th className="px-4 py-3 font-medium text-right">Seller Price</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium text-right">Actions</th>
                 </tr>
               </thead>
@@ -160,12 +159,6 @@ export default function AdminProductsPage() {
                     <td className="px-4 py-3 text-slate-600">{product.categoryName}</td>
                     <td className="px-4 py-3 text-right text-slate-600">${product.supplierCost.toFixed(2)}</td>
                     <td className="px-4 py-3 text-right font-medium text-slate-800">${product.sellingPrice.toFixed(2)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${product.isAvailable ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${product.isAvailable ? "bg-emerald-500" : "bg-slate-400"}`} />
-                        {product.isAvailable ? "Available" : "Unavailable"}
-                      </span>
-                    </td>
                     <td className="px-4 py-3 text-right">{actions(product)}</td>
                   </tr>
                 ))}

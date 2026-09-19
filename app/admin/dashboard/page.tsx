@@ -1,200 +1,510 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CircleDollarSign, RefreshCcw, ShoppingCart, Store, TrendingUp, Users } from "lucide-react";
-import { getAdminDashboard, getAdminSellers, getAuditLogs, updateSellerStatus } from "@/lib/api/admin";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  AlertCircle,
+  ArrowDownRight,
+  ArrowRight,
+  ArrowUpRight,
+  CheckCircle2,
+  CircleDollarSign,
+  RefreshCcw,
+  ShoppingCart,
+  Store,
+  Users,
+  WalletCards,
+} from "lucide-react";
+import { getAdminDashboard, getAdminOrders, getAdminSellers, updateSellerStatus } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
-import type { AdminDashboardDto, AdminSellerDto, AuditLogDto } from "@/lib/api/types";
+import type { AdminDashboardDto, AdminOrderDto, AdminSellerDto, OrderStatus, SellerStatus } from "@/lib/api/types";
 import { useAuthGuard } from "@/lib/api/useAuthGuard";
-import { SellerDetailModal } from "@/app/components/SellerDetailModal";
+import { SellerStatusConfirmModal } from "@/app/components/SellerStatusConfirmModal";
+import { ColumnChart, LineChart, compact, type DayPoint } from "@/app/components/DashboardCharts";
+
+const RANGES = [7, 14, 30] as const;
+
+const money = (value: number) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const statusLabel = (status: string) => status.replace(/([a-z])([A-Z])/g, "$1 $2");
+
+const statusTone: Record<string, string> = {
+  Delivered: "bg-emerald-50 text-emerald-700",
+  Completed: "bg-emerald-50 text-emerald-700",
+  Pending: "bg-amber-50 text-amber-700",
+  PaymentRequired: "bg-amber-50 text-amber-700",
+  PaymentVerification: "bg-amber-50 text-amber-700",
+  Cancelled: "bg-red-50 text-red-700",
+  Returned: "bg-red-50 text-red-700",
+};
+
+function relativeTime(iso: string) {
+  const seconds = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const units: [number, string][] = [[60, "minute"], [3600, "hour"], [86400, "day"]];
+  let value = seconds / 60;
+  let unit = "minute";
+  for (const [size, name] of units) {
+    if (seconds >= size) {
+      value = seconds / size;
+      unit = name;
+    }
+  }
+  const n = Math.floor(value);
+  return seconds > 86400 * 30 ? new Date(iso).toLocaleDateString() : `${n} ${unit}${n === 1 ? "" : "s"} ago`;
+}
+
+async function fetchAllOrders() {
+  const first = await getAdminOrders({ page: 1, pageSize: 100 });
+  const items = [...first.items];
+  for (let page = 2; page <= first.totalPages; page++) {
+    items.push(...(await getAdminOrders({ page, pageSize: 100 })).items);
+  }
+  return items;
+}
+
+const dayKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+
+function buildSeries(orders: AdminOrderDto[], days: number, pick: (o: AdminOrderDto) => number) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const buckets = new Map<string, number>();
+  for (const order of orders) {
+    const key = dayKey(new Date(order.createdAtUtc));
+    buckets.set(key, (buckets.get(key) ?? 0) + pick(order));
+  }
+  const points: DayPoint[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    points.push({
+      label: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      fullLabel: date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }),
+      value: buckets.get(dayKey(date)) ?? 0,
+    });
+  }
+  return points;
+}
+
+function sumWindow(orders: AdminOrderDto[], fromDaysAgo: number, toDaysAgo: number, pick: (o: AdminOrderDto) => number) {
+  const now = Date.now();
+  const day = 86400000;
+  return orders
+    .filter((o) => {
+      const t = new Date(o.createdAtUtc).getTime();
+      return t >= now - fromDaysAgo * day && t < now - toDaysAgo * day;
+    })
+    .reduce((sum, o) => sum + pick(o), 0);
+}
+
+function Delta({ current, previous }: { current: number; previous: number }) {
+  if (previous === 0 && current === 0) return <span className="text-xs text-slate-400">No change</span>;
+  if (previous === 0) return <span className="text-xs font-medium text-emerald-600">New activity</span>;
+  const pct = ((current - previous) / previous) * 100;
+  const up = pct >= 0;
+  const Icon = up ? ArrowUpRight : ArrowDownRight;
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${up ? "text-emerald-600" : "text-red-600"}`}>
+      <Icon className="h-3.5 w-3.5" />
+      {Math.abs(pct).toFixed(1)}%
+    </span>
+  );
+}
+
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-lg bg-slate-200/70 ${className}`} />;
+}
+
+function SectionError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      <span className="inline-flex items-center gap-2"><AlertCircle className="h-4 w-4 shrink-0" />{message}</span>
+      <button onClick={onRetry} className="font-semibold underline-offset-2 hover:underline">Retry</button>
+    </div>
+  );
+}
+
+function Card({ title, action, children, className = "" }: { title: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={`min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export default function AdminDashboardPage() {
   const ready = useAuthGuard("Admin");
-  const [dashboard, setDashboard] = useState<AdminDashboardDto | null>(null);
-  const [pendingSellers, setPendingSellers] = useState<AdminSellerDto[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLogDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [viewingSellerId, setViewingSellerId] = useState<string | null>(null);
+  const [range, setRange] = useState<(typeof RANGES)[number]>(14);
 
-  const load = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [dashboardData, sellersData, logsData] = await Promise.all([
-        getAdminDashboard(),
-        getAdminSellers({ status: "Pending", pageSize: 10 }),
-        getAuditLogs({ pageSize: 6 }),
-      ]);
-      setDashboard(dashboardData);
-      setPendingSellers(sellersData.items);
-      setAuditLogs(logsData.items);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to load dashboard.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [dashboard, setDashboard] = useState<AdminDashboardDto | null>(null);
+  const [orders, setOrders] = useState<AdminOrderDto[]>([]);
+  const [pendingSellers, setPendingSellers] = useState<AdminSellerDto[]>([]);
+  const [sellerNames, setSellerNames] = useState<Record<string, string>>({});
+
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+
+  const [pending, setPending] = useState<{ seller: AdminSellerDto; status: SellerStatus } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const load = useCallback(async () => {
+    const [dash, allOrders, pendingList, sellerList] = await Promise.allSettled([
+      getAdminDashboard(),
+      fetchAllOrders(),
+      getAdminSellers({ status: "Pending", pageSize: 5 }),
+      getAdminSellers({ pageSize: 100 }),
+    ]);
+    const next: Record<string, string> = {};
+    const fail = (key: string, result: PromiseRejectedResult, fallback: string) => {
+      next[key] = result.reason instanceof ApiError ? result.reason.message : fallback;
+    };
+    if (dash.status === "fulfilled") setDashboard(dash.value);
+    else fail("dashboard", dash, "Failed to load summary figures.");
+    if (allOrders.status === "fulfilled") setOrders(allOrders.value);
+    else fail("orders", allOrders, "Failed to load orders.");
+    if (pendingList.status === "fulfilled") setPendingSellers(pendingList.value.items);
+    else fail("sellers", pendingList, "Failed to load seller approvals.");
+    if (sellerList.status === "fulfilled") setSellerNames(Object.fromEntries(sellerList.value.items.map((s) => [s.id, s.shopName || s.fullName])));
+    setErrors(next);
+    setUpdatedAt(new Date());
+    setLoading(false);
+    setRefreshing(false);
+  }, []);
 
   useEffect(() => {
     if (ready) load();
-  }, [ready]);
+  }, [ready, load]);
 
-  const handleStatusChange = async (id: string, status: "Approved" | "Rejected") => {
+  const refresh = () => {
+    setRefreshing(true);
+    load();
+  };
+
+  const confirmStatus = async (reason: string) => {
+    if (!pending) return;
+    setSaving(true);
+    setSaveError("");
     try {
-      await updateSellerStatus(id, { status, reason: status === "Approved" ? "Documents verified." : "Application rejected." });
-      setPendingSellers((current) => current.filter((seller) => seller.id !== id));
+      await updateSellerStatus(pending.seller.id, { status: pending.status, reason });
+      setNotice(`${pending.seller.shopName || pending.seller.fullName} was ${pending.status.toLowerCase()}.`);
+      setPending(null);
+      load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to update seller status.");
+      setSaveError(err instanceof ApiError ? err.errors[0] ?? err.message : "Failed to update seller status.");
+    } finally {
+      setSaving(false);
     }
   };
 
+  const ordersSeries = useMemo(() => buildSeries(orders, range, () => 1), [orders, range]);
+  const revenueSeries = useMemo(() => buildSeries(orders, range, (o) => o.totalAmount), [orders, range]);
+  const ordersInRange = ordersSeries.reduce((sum, p) => sum + p.value, 0);
+  const revenueInRange = revenueSeries.reduce((sum, p) => sum + p.value, 0);
+
+  const grossRevenue = useMemo(() => orders.reduce((sum, o) => sum + o.totalAmount, 0), [orders]);
+  const previousOrders = useMemo(() => sumWindow(orders, range * 2, range, () => 1), [orders, range]);
+  const previousRevenue = useMemo(() => sumWindow(orders, range * 2, range, (o) => o.totalAmount), [orders, range]);
+
+  const statusBreakdown = useMemo(() => {
+    const counts = new Map<OrderStatus, number>();
+    orders.forEach((o) => counts.set(o.status, (counts.get(o.status) ?? 0) + 1));
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [orders]);
+
+  const recentOrders = useMemo(
+    () => [...orders].sort((a, b) => b.createdAtUtc.localeCompare(a.createdAtUtc)).slice(0, 6),
+    [orders],
+  );
+
   if (!ready) return null;
 
-  const stats = dashboard
+  const attention = dashboard
     ? [
-        { label: "Approved Sellers", value: dashboard.approvedSellers.toLocaleString(), icon: Users, tone: "bg-[#eaf8f1] text-[#1b8a5a]" },
-        { label: "Pending Sellers", value: dashboard.pendingSellers.toLocaleString(), icon: Store, tone: "bg-[#eaf2ff] text-[#2e6fe0]" },
-        { label: "Total Orders", value: dashboard.totalOrders.toLocaleString(), icon: ShoppingCart, tone: "bg-[#fff3e7] text-[#c98a1a]" },
-        { label: "Platform Profit", value: `$${dashboard.totalPlatformProfit.toLocaleString()}`, icon: CircleDollarSign, tone: "bg-[#eaf8f1] text-[#1b8a5a]" },
+        { label: "Seller approvals", count: dashboard.pendingSellers, href: "/admin/sellers", icon: Store },
+        { label: "Payments to verify", count: dashboard.pendingPaymentVerifications, href: "/admin/orders", icon: CircleDollarSign },
+        { label: "Withdrawal requests", count: dashboard.pendingWithdrawals, href: "/admin/withdrawals", icon: WalletCards },
+      ]
+    : [];
+  const attentionTotal = attention.reduce((sum, a) => sum + a.count, 0);
+
+  const kpis = dashboard
+    ? [
+        {
+          label: "Gross revenue",
+          value: money(grossRevenue),
+          icon: CircleDollarSign,
+          tone: "bg-emerald-50 text-emerald-600",
+          foot: <><Delta current={revenueInRange} previous={previousRevenue} /><span className="text-xs text-slate-400">vs previous {range} days</span></>,
+        },
+        {
+          label: "Platform profit",
+          value: money(dashboard.totalPlatformProfit),
+          icon: WalletCards,
+          tone: "bg-emerald-50 text-emerald-600",
+          foot: <span className="text-xs text-slate-400">All time</span>,
+        },
+        {
+          label: "Total orders",
+          value: dashboard.totalOrders.toLocaleString(),
+          icon: ShoppingCart,
+          tone: "bg-amber-50 text-amber-600",
+          foot: <><Delta current={ordersInRange} previous={previousOrders} /><span className="text-xs text-slate-400">vs previous {range} days</span></>,
+        },
+        {
+          label: "Active sellers",
+          value: dashboard.approvedSellers.toLocaleString(),
+          icon: Users,
+          tone: "bg-blue-50 text-blue-600",
+          foot: <span className="text-xs text-slate-400">{dashboard.totalSellers.toLocaleString()} registered in total</span>,
+        },
       ]
     : [];
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between gap-4">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-slate-500">Marketplace overview</p>
+          <p className="text-sm font-medium text-slate-500">
+            {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+          </p>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Dashboard</h1>
         </div>
-        <button
-          onClick={load}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-        >
-          <RefreshCcw className="h-4 w-4" />
-          Refresh Data
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm" role="group" aria-label="Date range">
+            {RANGES.map((r) => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                aria-pressed={range === r}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${range === r ? "bg-[var(--brand)] text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+              >
+                {r}d
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={refresh}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
+          >
+            <RefreshCcw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+          {updatedAt && <span className="hidden text-xs text-slate-400 sm:inline">Updated {updatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+        </div>
       </div>
 
-      {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+      {notice && (
+        <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          <span className="inline-flex items-center gap-2"><CheckCircle2 className="h-4 w-4" />{notice}</span>
+          <button onClick={() => setNotice("")} className="text-emerald-700/70 hover:text-emerald-800" aria-label="Dismiss">×</button>
+        </div>
+      )}
+      {errors.dashboard && <SectionError message={errors.dashboard} onRetry={load} />}
 
       {loading ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-slate-500">Loading dashboard…</div>
+        <>
+          <Skeleton className="h-16 w-full" />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-32" />)}
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Skeleton className="h-72" />
+            <Skeleton className="h-72" />
+          </div>
+        </>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {stats.map(({ label, value, icon: Icon, tone }) => (
-              <div key={label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition duration-300 animate-[fadeIn_0.45s_ease]">
-                <div className="mb-6 flex items-start justify-between gap-4">
-                  <div className="space-y-2">
+          {dashboard && (
+            <div className={`flex flex-wrap items-center gap-3 rounded-2xl border px-4 py-3 ${attentionTotal > 0 ? "border-amber-200 bg-amber-50/60" : "border-emerald-200 bg-emerald-50/60"}`}>
+              <div className={`inline-flex items-center gap-2 text-sm font-semibold ${attentionTotal > 0 ? "text-amber-800" : "text-emerald-800"}`}>
+                {attentionTotal > 0 ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                {attentionTotal > 0 ? "Needs your attention" : "All caught up — nothing is waiting on you"}
+              </div>
+              {attentionTotal > 0 &&
+                attention
+                  .filter((a) => a.count > 0)
+                  .map(({ label, count, href, icon: Icon }) => (
+                    <Link key={label} href={href} className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white px-3 py-1 text-sm font-medium text-slate-700 shadow-sm transition hover:border-amber-300">
+                      <Icon className="h-3.5 w-3.5 text-amber-600" />
+                      {count} {label.toLowerCase()}
+                      <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
+                    </Link>
+                  ))}
+            </div>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {kpis.map(({ label, value, icon: Icon, tone, foot }) => (
+              <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
                     <p className="text-sm text-slate-500">{label}</p>
-                    <div className="text-[2rem] font-semibold tracking-tight text-slate-900 tabular-nums">{value}</div>
+                    <div className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 tabular-nums">{value}</div>
                   </div>
                   <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone}`}>
                     <Icon className="h-5 w-5" />
                   </div>
                 </div>
-                <div className="flex items-center gap-1 text-xs font-medium text-emerald-600">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  <span>Live data</span>
-                </div>
+                <div className="mt-4 flex items-center gap-2">{foot}</div>
               </div>
             ))}
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1.5fr_0.9fr]">
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-4 w-1 rounded-full bg-[#f0563f]" />
-                  <h2 className="text-xl font-semibold text-slate-900">Pending Seller Approvals</h2>
-                </div>
-                <span className="rounded-full bg-[#fff3ec] px-2.5 py-1 text-xs font-medium text-[#f0563f]">{pendingSellers.length} Requests</span>
-              </div>
+          {errors.orders ? (
+            <SectionError message={errors.orders} onRetry={load} />
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card
+                title="Orders"
+                action={<span className="text-sm text-slate-500"><span className="font-semibold text-slate-900">{ordersInRange.toLocaleString()}</span> in the last {range} days</span>}
+              >
+                <ColumnChart points={ordersSeries} format={(v) => (Number.isInteger(v) ? v.toLocaleString() : v.toFixed(1))} title={`Orders per day, last ${range} days`} />
+              </Card>
+              <Card
+                title="Revenue"
+                action={<span className="text-sm text-slate-500"><span className="font-semibold text-slate-900">{money(revenueInRange)}</span> in the last {range} days</span>}
+              >
+                <LineChart points={revenueSeries} format={(v) => (v >= 1000 ? `$${compact(v)}` : `$${Math.round(v * 100) / 100}`)} title={`Revenue per day, last ${range} days`} />
+              </Card>
+            </div>
+          )}
 
-              {pendingSellers.length > 0 ? (
+          <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
+            <Card
+              title="Recent orders"
+              action={<Link href="/admin/orders" className="inline-flex items-center gap-1 text-sm font-medium text-[var(--brand)] hover:underline">View all <ArrowRight className="h-3.5 w-3.5" /></Link>}
+            >
+              {recentOrders.length === 0 ? (
+                <EmptyState icon={ShoppingCart} title="No orders yet" hint="New orders will show up here as they come in." />
+              ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] text-left text-sm">
+                  <table className="w-full min-w-[520px] text-left text-sm">
                     <thead>
-                      <tr className="border-b border-slate-200 text-slate-500">
-                        <th className="pb-3 font-medium">Seller Name</th>
-                        <th className="pb-3 font-medium">Email</th>
-                        <th className="pb-3 font-medium">Phone</th>
-                        <th className="pb-3 font-medium">Registration Date</th>
-                        <th className="pb-3 font-medium">Status</th>
-                        <th className="pb-3 font-medium text-right">Actions</th>
+                      <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
+                        <th className="pb-2 font-medium">Order</th>
+                        <th className="pb-2 font-medium">Customer</th>
+                        <th className="pb-2 font-medium">Seller</th>
+                        <th className="pb-2 text-right font-medium">Total</th>
+                        <th className="pb-2 pl-4 font-medium">Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {pendingSellers.map((seller) => (
-                        <tr key={seller.id} className="border-b border-slate-200 last:border-b-0">
-                          <td className="py-3 pr-3 font-medium text-slate-800">{seller.fullName}</td>
-                          <td className="py-3 pr-3 text-slate-600">{seller.email}</td>
-                          <td className="py-3 pr-3 text-slate-600">{seller.phoneNumber}</td>
-                          <td className="py-3 pr-3 text-slate-600">{new Date(seller.createdAtUtc).toLocaleDateString()}</td>
+                      {recentOrders.map((order) => (
+                        <tr key={order.id} className="border-b border-slate-100 last:border-b-0">
                           <td className="py-3 pr-3">
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">
-                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                              Pending
-                            </span>
+                            <div className="font-medium text-slate-800">{order.orderNumber}</div>
+                            <div className="text-xs text-slate-400">{relativeTime(order.createdAtUtc)}</div>
                           </td>
-                          <td className="py-3 text-right">
-                            <div className="flex justify-end gap-2">
-                              <button onClick={() => setViewingSellerId(seller.id)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">View</button>
-                              <button onClick={() => handleStatusChange(seller.id, "Approved")} className="rounded-lg bg-[#f0563f] px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-[#db4d36]">Approve</button>
-                              <button onClick={() => handleStatusChange(seller.id, "Rejected")} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">Reject</button>
-                            </div>
+                          <td className="py-3 pr-3 text-slate-700">{order.customerName || "—"}</td>
+                          <td className="py-3 pr-3 text-slate-600">{sellerNames[order.sellerId] ?? "—"}</td>
+                          <td className="py-3 text-right font-medium tabular-nums text-slate-800">{money(order.totalAmount)}</td>
+                          <td className="py-3 pl-4">
+                            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${statusTone[order.status] ?? "bg-blue-50 text-blue-700"}`}>{statusLabel(order.status)}</span>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              ) : (
-                <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-center text-slate-500">
-                  <div className="text-lg font-medium text-slate-700">No pending approval requests.</div>
-                  <p className="mt-1 text-sm text-slate-500">Approved sellers will appear here.</p>
-                </div>
               )}
-            </section>
+            </Card>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-4 w-1 rounded-full bg-[#2e6fe0]" />
-                  <h2 className="text-xl font-semibold text-slate-900">Recent Activity</h2>
-                </div>
-              </div>
-
-              {auditLogs.length > 0 ? (
-                <div className="space-y-4">
-                  {auditLogs.map((item) => (
-                    <div key={item.id} className="flex gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
-                      <div className="mt-1 h-2.5 w-2.5 rounded-full bg-[#f0563f]" />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="font-medium text-slate-800">{item.action}</p>
-                          <span className="text-[11px] text-slate-400">{new Date(item.createdAtUtc).toLocaleString()}</span>
+            <Card title="Orders by status">
+              {statusBreakdown.length === 0 ? (
+                <EmptyState icon={ShoppingCart} title="No orders yet" />
+              ) : (
+                <ul className="space-y-3">
+                  {statusBreakdown.map(([status, count]) => {
+                    const share = orders.length ? (count / orders.length) * 100 : 0;
+                    return (
+                      <li key={status}>
+                        <div className="mb-1 flex items-center justify-between text-sm">
+                          <span className="text-slate-700">{statusLabel(status)}</span>
+                          <span className="tabular-nums text-slate-500"><span className="font-semibold text-slate-900">{count}</span> · {share.toFixed(0)}%</span>
                         </div>
-                        <p className="mt-1 text-sm text-slate-600">{item.entityName} · {item.entityId}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-center text-slate-500">
-                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200">
-                    <ShoppingCart className="h-5 w-5 text-slate-400" />
-                  </div>
-                  <div className="text-lg font-medium text-slate-700">No recent activity to display.</div>
-                </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                          <div className="h-full rounded-full bg-[var(--brand)]" style={{ width: `${Math.max(share, 2)}%` }} />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
-            </section>
+            </Card>
+          </div>
+
+          <div>
+            <Card
+              title="Pending seller approvals"
+              action={
+                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                  {dashboard?.pendingSellers ?? pendingSellers.length} pending
+                </span>
+              }
+            >
+              {errors.sellers ? (
+                <SectionError message={errors.sellers} onRetry={load} />
+              ) : pendingSellers.length === 0 ? (
+                <EmptyState icon={CheckCircle2} title="No pending approvals" hint="New seller applications will appear here." />
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {pendingSellers.map((seller) => (
+                    <li key={seller.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand)]/10 text-sm font-semibold text-[var(--brand)]">
+                          {(seller.shopName || seller.fullName).slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="truncate font-medium text-slate-900">{seller.shopName || seller.fullName}</div>
+                          <div className="truncate text-xs text-slate-500">{seller.fullName} · {seller.email}</div>
+                          <div className="text-xs text-slate-400">Applied {relativeTime(seller.createdAtUtc)}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Link href={`/admin/sellers/${seller.id}`} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">Review</Link>
+                        <button onClick={() => { setSaveError(""); setPending({ seller, status: "Approved" }); }} className="rounded-lg bg-[var(--brand)] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--brand-hover)]">Approve</button>
+                        <button onClick={() => { setSaveError(""); setPending({ seller, status: "Rejected" }); }} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">Reject</button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+
           </div>
         </>
       )}
 
-      {viewingSellerId && <SellerDetailModal sellerId={viewingSellerId} onClose={() => setViewingSellerId(null)} />}
+      {pending && (
+        <SellerStatusConfirmModal
+          seller={pending.seller}
+          status={pending.status}
+          saving={saving}
+          error={saveError}
+          onCancel={() => setPending(null)}
+          onConfirm={confirmStatus}
+        />
+      )}
+    </div>
+  );
+}
+
+function EmptyState({ icon: Icon, title, hint }: { icon: React.ComponentType<{ className?: string }>; title: string; hint?: string }) {
+  return (
+    <div className="flex min-h-[160px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 text-center">
+      <span className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200">
+        <Icon className="h-5 w-5" />
+      </span>
+      <div className="text-sm font-medium text-slate-700">{title}</div>
+      {hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
     </div>
   );
 }

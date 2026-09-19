@@ -9,10 +9,12 @@ export function ProductCard({
   product,
   onClick,
   footer,
+  showStatus = true,
 }: {
   product: ProductDto;
   onClick?: () => void;
   footer?: ReactNode;
+  showStatus?: boolean;
 }) {
   return (
     <article
@@ -24,14 +26,16 @@ export function ProductCard({
         <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm backdrop-blur">
           {product.categoryName}
         </span>
-        <span
-          className={`absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium shadow-sm backdrop-blur ${
-            product.isAvailable ? "bg-emerald-50/95 text-emerald-700" : "bg-slate-100/95 text-slate-600"
-          }`}
-        >
-          <span className={`h-1.5 w-1.5 rounded-full ${product.isAvailable ? "bg-emerald-500" : "bg-slate-400"}`} />
-          {product.isAvailable ? "Available" : "Unavailable"}
-        </span>
+        {showStatus && (
+          <span
+            className={`absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium shadow-sm backdrop-blur ${
+              product.isAvailable ? "bg-emerald-50/95 text-emerald-700" : "bg-slate-100/95 text-slate-600"
+            }`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${product.isAvailable ? "bg-emerald-500" : "bg-slate-400"}`} />
+            {product.isAvailable ? "Available" : "Unavailable"}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-4">
