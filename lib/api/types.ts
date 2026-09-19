@@ -342,7 +342,7 @@ export interface CreateProductPayload {
   categoryId: string;
   supplierCost: number;
   sellingPrice: number;
-  stockQuantity: number;
+  stockQuantity?: number;
   images?: File[];
 }
 
@@ -352,7 +352,7 @@ export interface UpdateProductPayload {
   categoryId: string;
   supplierCost: number;
   sellingPrice: number;
-  stockQuantity: number;
+  stockQuantity?: number;
   isAvailable: boolean;
   images?: File[];
 }

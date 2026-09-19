@@ -29,7 +29,11 @@ export function ProductThumbnail({
     <>
       <button
         type="button"
-        onClick={() => hasImage && setGalleryOpen(true)}
+        onClick={(event) => {
+          if (!hasImage) return;
+          event.stopPropagation();
+          setGalleryOpen(true);
+        }}
         className={`relative block overflow-hidden rounded-xl ${bare ? "" : "mb-4"} ${className} ${hasImage ? "cursor-zoom-in" : "cursor-default"}`}
         aria-label={hasImage ? `View ${name} photos` : name}
       >

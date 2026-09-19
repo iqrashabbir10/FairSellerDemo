@@ -56,14 +56,15 @@ export function createSellerSupportConversation() {
   return apiFetch<SupportConversationDto>("/api/seller/support", { method: "POST" });
 }
 
-// `attachment` is speculative — see repo memory notes for the multipart contract the backend
-// needs to support; falls back to a plain JSON body when no file is attached.
-export function sendSellerSupportMessage(conversationId: string, message: string, attachment?: File | null) {
+// Attachments go to the dedicated multipart endpoint (`message` + `files`); it may reply with a single
+// message or a list, so normalise to one message. Plain text uses the JSON endpoint.
+export async function sendSellerSupportMessage(conversationId: string, message: string, attachment?: File | null) {
   if (attachment) {
     const formData = new FormData();
     formData.append("message", message);
-    formData.append("attachment", attachment);
-    return apiFetch<SupportMessageDto>(`/api/seller/support/${conversationId}/messages`, { method: "POST", body: formData });
+    formData.append("files", attachment);
+    const result = await apiFetch<SupportMessageDto | SupportMessageDto[]>(`/api/seller/support/${conversationId}/messages/attachments`, { method: "POST", body: formData });
+    return Array.isArray(result) ? result[result.length - 1] : result;
   }
   return apiFetch<SupportMessageDto>(`/api/seller/support/${conversationId}/messages`, {
     method: "POST",
@@ -77,8 +78,6 @@ export function getSellerSupportMessages(conversationId: string, request?: Paged
   });
 }
 
-// Speculative — not in the original spec. Backend needs to add this route (see repo memory notes)
-// for real cross-device read receipts; harmless no-op if it 404s (caller swallows the error).
 export function markSellerSupportMessagesRead(conversationId: string) {
   return apiFetch<{ success: boolean }>(`/api/seller/support/${conversationId}/messages/read`, { method: "POST" });
 }

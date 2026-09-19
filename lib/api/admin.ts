@@ -76,32 +76,35 @@ export function getAdminCategories() {
   return apiFetch<CategoryDto[]>("/api/admin/categories");
 }
 
+export function createAdminCategory(payload: { name: string }) {
+  return apiFetch<CategoryDto>("/api/admin/categories", { method: "POST", body: payload });
+}
+
 export function getAdminProduct(id: string) {
   return apiFetch<ProductDto>(`/api/admin/products/${id}`);
 }
 
-// Product save + image upload share the same endpoint via multipart/form-data.
-function buildProductFormData(payload: CreateProductPayload | UpdateProductPayload) {
+// supplierCost is the admin's base price; sellingPrice is the seller price (base + 23%).
+// Create is multipart (images upload with the product); update is a plain JSON body per swagger.
+// Stock is no longer managed in the UI, so create sends 0 and update passes the existing value through.
+export function createAdminProduct(payload: CreateProductPayload) {
   const formData = new FormData();
   formData.append("name", payload.name);
   formData.append("description", payload.description);
   formData.append("categoryId", payload.categoryId);
   formData.append("supplierCost", String(payload.supplierCost));
   formData.append("sellingPrice", String(payload.sellingPrice));
-  formData.append("stockQuantity", String(payload.stockQuantity));
-  if ("isAvailable" in payload) {
-    formData.append("isAvailable", String(payload.isAvailable));
-  }
+  formData.append("stockQuantity", String(payload.stockQuantity ?? 0));
   payload.images?.forEach((image) => formData.append("images", image));
-  return formData;
-}
-
-export function createAdminProduct(payload: CreateProductPayload) {
-  return apiFetch<ProductDto>("/api/admin/products", { method: "POST", body: buildProductFormData(payload) });
+  return apiFetch<ProductDto>("/api/admin/products", { method: "POST", body: formData });
 }
 
 export function updateAdminProduct(id: string, payload: UpdateProductPayload) {
-  return apiFetch<ProductDto>(`/api/admin/products/${id}`, { method: "PUT", body: buildProductFormData(payload) });
+  const { images: _images, ...body } = payload;
+  return apiFetch<ProductDto>(`/api/admin/products/${id}`, {
+    method: "PUT",
+    body: { ...body, stockQuantity: body.stockQuantity ?? 0 },
+  });
 }
 
 export function deleteAdminProduct(id: string) {
@@ -151,20 +154,19 @@ export function getAdminSupportMessages(conversationId: string, request?: PagedR
   });
 }
 
-// Speculative — not in the original spec. Backend needs to add this route (see repo memory notes)
-// for real cross-device read receipts; harmless no-op if it 404s (caller swallows the error).
 export function markAdminSupportMessagesRead(conversationId: string) {
   return apiFetch<{ success: boolean }>(`/api/admin/support/${conversationId}/messages/read`, { method: "POST" });
 }
 
-// `attachment` is speculative — see repo memory notes for the multipart contract the backend
-// needs to support; falls back to a plain JSON body when no file is attached.
-export function sendAdminSupportMessage(conversationId: string, message: string, attachment?: File | null) {
+// Attachments go to the dedicated multipart endpoint (`message` + `files`); it may reply with a single
+// message or a list, so normalise to one message. Plain text uses the JSON endpoint.
+export async function sendAdminSupportMessage(conversationId: string, message: string, attachment?: File | null) {
   if (attachment) {
     const formData = new FormData();
     formData.append("message", message);
-    formData.append("attachment", attachment);
-    return apiFetch<SupportMessageDto>(`/api/admin/support/${conversationId}/messages`, { method: "POST", body: formData });
+    formData.append("files", attachment);
+    const result = await apiFetch<SupportMessageDto | SupportMessageDto[]>(`/api/admin/support/${conversationId}/messages/attachments`, { method: "POST", body: formData });
+    return Array.isArray(result) ? result[result.length - 1] : result;
   }
   return apiFetch<SupportMessageDto>(`/api/admin/support/${conversationId}/messages`, {
     method: "POST",

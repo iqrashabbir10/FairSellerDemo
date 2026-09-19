@@ -2,7 +2,9 @@
 
 import { ReactNode, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, Menu, MessageSquareText, Package, Settings, ShoppingBag, ShieldCheck, WalletCards, X } from "lucide-react";
+import { BarChart3, Menu, MessageSquareText, Package, Settings, ShoppingBag, ShieldCheck, WalletCards, X, LogOut } from "lucide-react";
+import { clearSession } from "@/lib/api/session";
+import { logout } from "@/lib/api/auth";
 import { BackToTop } from "@/app/components/BackToTop";
 import { ThemePicker } from "@/app/components/ThemePicker";
 
@@ -97,7 +99,8 @@ export default function SellerLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   const handleLogout = () => {
-    localStorage.removeItem("wayfeir-user");
+    logout().catch(() => {});
+    clearSession();
     router.push("/");
   };
 
@@ -107,7 +110,7 @@ export default function SellerLayout({ children }: { children: ReactNode }) {
         <Sidebar open={mobileOpen} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
 
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-          <header className="flex h-20 items-center justify-between border-b border-slate-200 bg-[var(--brand)] px-5 text-white shadow-sm sm:px-7">
+          <header className="sticky top-0 z-30 flex h-16 items-center sm:h-20 justify-between border-b border-slate-200 bg-[var(--brand)] px-5 text-white shadow-sm sm:px-7">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setMobileOpen(true)}
@@ -125,6 +128,14 @@ export default function SellerLayout({ children }: { children: ReactNode }) {
 
             <div className="flex items-center gap-3 text-sm font-medium text-white/95">
               <ThemePicker />
+              <button
+                onClick={handleLogout}
+                aria-label="Logout"
+                title="Logout"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/30 bg-white/5 transition hover:bg-white/15"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
             </div>
           </header>
 

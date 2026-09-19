@@ -60,18 +60,14 @@ export function ProductDetailModal({ productId, onClose }: { productId: string; 
               <div className="text-xs font-medium uppercase text-slate-400">Description</div>
               <p className="text-slate-700">{product.description ?? "No description provided."}</p>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <div className="text-xs font-medium uppercase text-slate-400">Supplier Cost</div>
+                <div className="text-xs font-medium uppercase text-slate-400">Base Price</div>
                 <div className="font-semibold text-slate-900">${product.supplierCost.toFixed(2)}</div>
               </div>
               <div>
-                <div className="text-xs font-medium uppercase text-slate-400">Selling Price</div>
+                <div className="text-xs font-medium uppercase text-slate-400">Seller Price</div>
                 <div className="font-semibold text-slate-900">${product.sellingPrice.toFixed(2)}</div>
-              </div>
-              <div>
-                <div className="text-xs font-medium uppercase text-slate-400">Stock</div>
-                <div className="text-slate-700">{product.stockQuantity}</div>
               </div>
             </div>
             <span className={`inline-flex w-fit rounded-full px-2 py-1 text-xs font-medium ${product.isAvailable ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
