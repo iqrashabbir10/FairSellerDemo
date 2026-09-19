@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
-import { createAdminCategory, getAdminCategories } from "@/lib/api/admin";
+import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { createAdminCategory, deleteAdminCategory, getAdminCategories, updateAdminCategory } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import type { CategoryDto } from "@/lib/api/types";
 import { useAuthGuard } from "@/lib/api/useAuthGuard";
@@ -14,6 +14,9 @@ export default function AdminCategoriesPage() {
   const [error, setError] = useState("");
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -52,6 +55,38 @@ export default function AdminCategoriesPage() {
     }
   };
 
+  const handleSave = async (category: CategoryDto) => {
+    if (!editName.trim()) {
+      setError("Category name is required.");
+      return;
+    }
+    setBusyId(category.id);
+    setError("");
+    try {
+      await updateAdminCategory(category.id, { name: editName.trim() });
+      setEditingId(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.errors[0] ?? err.message : "Failed to update category.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleDelete = async (category: CategoryDto) => {
+    if (!window.confirm(`Delete category "${category.name}"?`)) return;
+    setBusyId(category.id);
+    setError("");
+    try {
+      await deleteAdminCategory(category.id);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.errors[0] ?? err.message : "Failed to delete category.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -82,12 +117,51 @@ export default function AdminCategoriesPage() {
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
                 <th className="px-4 py-3 font-medium">Name</th>
+                <th className="px-4 py-3 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {categories.map((category) => (
                 <tr key={category.id} className="border-b border-slate-200 last:border-b-0">
-                  <td className="px-4 py-3 font-medium text-slate-800">{category.name}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">
+                    {editingId === category.id ? (
+                      <input
+                        autoFocus
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSave(category);
+                          if (e.key === "Escape") setEditingId(null);
+                        }}
+                        className="w-full max-w-sm rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm outline-none focus:border-[#f0563f] focus:bg-white"
+                      />
+                    ) : (
+                      category.name
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-2">
+                      {editingId === category.id ? (
+                        <>
+                          <button onClick={() => handleSave(category)} disabled={busyId === category.id} className="inline-flex items-center gap-1 rounded-lg bg-[#f0563f] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#dc4b34] disabled:opacity-60">
+                            <Check className="h-3.5 w-3.5" /> Save
+                          </button>
+                          <button onClick={() => setEditingId(null)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                            <X className="h-3.5 w-3.5" /> Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => { setEditingId(category.id); setEditName(category.name); }} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                            <Pencil className="h-3.5 w-3.5" /> Edit
+                          </button>
+                          <button onClick={() => handleDelete(category)} disabled={busyId === category.id} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60">
+                            <Trash2 className="h-3.5 w-3.5" /> Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

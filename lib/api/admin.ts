@@ -80,6 +80,14 @@ export function createAdminCategory(payload: { name: string }) {
   return apiFetch<CategoryDto>("/api/admin/categories", { method: "POST", body: payload });
 }
 
+export function updateAdminCategory(id: string, payload: { name: string }) {
+  return apiFetch<CategoryDto>(`/api/admin/categories/${id}`, { method: "PUT", body: payload });
+}
+
+export function deleteAdminCategory(id: string) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/admin/categories/${id}`, { method: "DELETE" });
+}
+
 export function getAdminProduct(id: string) {
   return apiFetch<ProductDto>(`/api/admin/products/${id}`);
 }
