@@ -160,20 +160,28 @@ export interface CategoryDto {
   name: string;
 }
 
+// One product line of an order. An order with several products has several items.
+export interface OrderItemDto {
+  productId: string;
+  productName: string;
+  sku?: string | null;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  imageUrl?: string | null;
+}
+
 export interface SellerOrderDto {
   id: string;
   orderNumber: string;
-  productId: string;
-  quantity: number;
-  sellingPrice: number;
+  totalAmount: number;
   expectedProfit: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   createdAtUtc: string;
-  // What the seller pays from their wallet to pick this order (supplier cost x quantity).
+  // What the seller pays from their wallet to pick this order (supplier cost x quantity, for every item).
   pickCost: number;
-  // The product's code as it was when the order was placed.
-  productSku?: string | null;
+  items: OrderItemDto[];
 }
 
 export interface PickOrderResultDto {
@@ -278,7 +286,17 @@ export interface SupportAttachmentDto {
   fileUrl: string;
 }
 
+export interface ReplyPreviewDto {
+  id: string;
+  senderUserId: string;
+  message: string;
+  hasAttachment: boolean;
+  isDeleted: boolean;
+}
+
 export interface SupportMessageDto {
+  replyTo?: ReplyPreviewDto | null;
+  isDeleted?: boolean;
   id: string;
   conversationId: string;
   senderUserId: string;
@@ -347,17 +365,17 @@ export interface CreateOrderPayload {
   items: CreateOrderItemPayload[];
 }
 
-// Backend creates one order record per item, so POST /api/orders returns an array.
+// POST /api/orders creates ONE order containing every product, and returns it in a one-element array.
 export interface CreatedOrderDto {
   id: string;
   orderNumber: string;
   sellerId: string;
-  productId: string;
-  quantity: number;
-  sellingPrice: number;
-  expectedProfit: number;
+  itemCount: number;
+  totalQuantity: number;
+  totalAmount: number;
+  profitAmount: number;
   status: OrderStatus;
-  createdAtUtc: string;
+  paymentStatus: PaymentStatus;
 }
 
 // ---- Admin ----
@@ -404,8 +422,6 @@ export interface AdminOrderDto {
   id: string;
   orderNumber: string;
   sellerId: string;
-  productId: string;
-  quantity: number;
   totalAmount: number;
   profitAmount: number;
   status: OrderStatus;
@@ -415,7 +431,7 @@ export interface AdminOrderDto {
   customerEmail: string;
   customerAddress: string;
   createdAtUtc: string;
-  productSku?: string | null;
+  items: OrderItemDto[];
 }
 
 export interface UpdateOrderStatusPayload {

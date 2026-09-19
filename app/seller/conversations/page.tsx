@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createSellerSupportConversation, getSellerSupportConversations, getSellerSupportMessages, markSellerSupportMessagesRead, sendSellerSupportMessage } from "@/lib/api/seller";
+import { deleteSellerSupportMessage, createSellerSupportConversation, getSellerSupportConversations, getSellerSupportMessages, markSellerSupportMessagesRead, sendSellerSupportMessage } from "@/lib/api/seller";
 import { ApiError } from "@/lib/api/client";
 import { getSession } from "@/lib/api/session";
 import { watchSupportAgentsPresence } from "@/lib/signalr/supportHub";
@@ -13,6 +13,7 @@ const sellerChatApi: ChatApi = {
   getMessages: getSellerSupportMessages,
   markRead: markSellerSupportMessagesRead,
   send: sendSellerSupportMessage,
+  remove: deleteSellerSupportMessage,
 };
 
 export default function SellerConversationsPage() {

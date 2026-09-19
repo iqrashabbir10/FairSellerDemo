@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Eye, Printer, Search, X } from "lucide-react";
 import { useResponsiveView, ViewToggle } from "@/app/components/ViewToggle";
 import { Pagination } from "@/app/components/Pagination";
-import { getAdminOrders, getAdminProducts, getAdminSellers, updateOrderStatus } from "@/lib/api/admin";
+import { getAdminOrders, getAdminSellers, updateOrderStatus } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
-import type { AdminOrderDto, OrderStatus } from "@/lib/api/types";
+import type { AdminOrderDto, OrderItemDto, OrderStatus } from "@/lib/api/types";
 import { useAuthGuard } from "@/lib/api/useAuthGuard";
 
 const STATUSES: OrderStatus[] = [
@@ -50,63 +50,58 @@ async function fetchAll<T>(load: (page: number) => Promise<{ items: T[]; totalPa
   return items;
 }
 
-// The API creates one order record per product in a checkout, so a customer buying several products
-// shows up as several records. Records for the same seller + customer placed within a few seconds of
-// each other are grouped into one invoice.
-const INVOICE_WINDOW_MS = 5000;
-
+// An order can hold several products; the invoice lists them as items.
 interface Invoice {
   key: string;
+  orderNumber: string;
   sellerId: string;
   customerName: string;
   customerPhone: string;
   customerEmail: string;
   customerAddress: string;
   createdAtUtc: string;
-  lines: AdminOrderDto[];
+  items: OrderItemDto[];
   total: number;
   profit: number;
-  status: OrderStatus | "Mixed";
+  status: OrderStatus;
 }
 
 function buildInvoices(orders: AdminOrderDto[]): Invoice[] {
-  const sorted = [...orders].sort((a, b) => new Date(b.createdAtUtc).getTime() - new Date(a.createdAtUtc).getTime());
-  const groups = new Map<string, { time: number; lines: AdminOrderDto[] }[]>();
-  for (const order of sorted) {
-    const key = [order.sellerId, order.customerName, order.customerPhone, order.customerEmail, order.customerAddress].join("|");
-    const time = new Date(order.createdAtUtc).getTime();
-    const buckets = groups.get(key) ?? [];
-    const bucket = buckets.find((b) => Math.abs(b.time - time) <= INVOICE_WINDOW_MS);
-    if (bucket) bucket.lines.push(order);
-    else buckets.push({ time, lines: [order] });
-    groups.set(key, buckets);
-  }
-  const invoices: Invoice[] = [];
-  for (const buckets of groups.values()) {
-    for (const { lines } of buckets) {
-      const ordered = [...lines].sort((a, b) => a.orderNumber.localeCompare(b.orderNumber));
-      const first = ordered[0];
-      const statuses = new Set(ordered.map((l) => l.status));
-      invoices.push({
-        key: first.id,
-        sellerId: first.sellerId,
-        customerName: first.customerName,
-        customerPhone: first.customerPhone,
-        customerEmail: first.customerEmail,
-        customerAddress: first.customerAddress,
-        createdAtUtc: ordered.reduce((max, l) => (l.createdAtUtc > max ? l.createdAtUtc : max), first.createdAtUtc),
-        lines: ordered,
-        total: ordered.reduce((sum, l) => sum + l.totalAmount, 0),
-        profit: ordered.reduce((sum, l) => sum + l.profitAmount, 0),
-        status: statuses.size === 1 ? first.status : "Mixed",
-      });
-    }
-  }
-  return invoices.sort((a, b) => new Date(b.createdAtUtc).getTime() - new Date(a.createdAtUtc).getTime());
+  return [...orders]
+    .sort((a, b) => new Date(b.createdAtUtc).getTime() - new Date(a.createdAtUtc).getTime())
+    .map((order) => ({
+      key: order.id,
+      orderNumber: order.orderNumber,
+      sellerId: order.sellerId,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      customerEmail: order.customerEmail,
+      customerAddress: order.customerAddress,
+      createdAtUtc: order.createdAtUtc,
+      items: order.items ?? [],
+      total: order.totalAmount,
+      profit: order.profitAmount,
+      status: order.status,
+    }));
 }
 
-const invoiceNumber = (invoice: Invoice) =>
-  invoice.lines.length > 1 ? `${invoice.lines[0].orderNumber} (+${invoice.lines.length - 1})` : invoice.lines[0].orderNumber;
+const invoiceNumber = (invoice: Invoice) => invoice.orderNumber;
+const totalUnits = (invoice: Invoice) => invoice.items.reduce((sum, item) => sum + item.quantity, 0);
+
+// One product: "Name × 2" with its code underneath; several: "3 products".
+function ItemsSummary({ invoice }: { invoice: Invoice }) {
+  if (invoice.items.length === 0) return <>—</>;
+  if (invoice.items.length === 1) {
+    const item = invoice.items[0];
+    return (
+      <>
+        {item.productName} × {item.quantity}
+        {item.sku && <span className="block font-mono text-xs text-slate-400">{item.sku}</span>}
+      </>
+    );
+  }
+  return <>{invoice.items.length} products · {totalUnits(invoice)} units</>;
+}
 
 function ConfirmStatusModal({
   invoice,
@@ -122,13 +117,12 @@ function ConfirmStatusModal({
   onConfirm: (note: string) => void;
 }) {
   const [note, setNote] = useState("");
-  const affected = invoice.lines.filter((l) => l.status !== status).length;
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4" onClick={saving ? undefined : onCancel}>
       <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl" onClick={(event) => event.stopPropagation()}>
         <h2 className="text-lg font-semibold text-slate-900">Confirm status change</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Change <span className="font-medium text-slate-900">{invoiceNumber(invoice)}</span> ({affected} item{affected === 1 ? "" : "s"}) from{" "}
+          Change <span className="font-medium text-slate-900">{invoiceNumber(invoice)}</span> from{" "}
           <span className="font-medium text-slate-900">{statusLabel(invoice.status)}</span> to{" "}
           <span className="font-medium text-slate-900">{statusLabel(status)}</span>?
         </p>
@@ -158,14 +152,12 @@ function InvoiceModal({
   invoice,
   sellerName,
   sellerEmail,
-  productName,
   statusControl,
   onClose,
 }: {
   invoice: Invoice;
   sellerName: string;
   sellerEmail?: string;
-  productName: (id: string) => string;
   statusControl: React.ReactNode;
   onClose: () => void;
 }) {
@@ -234,19 +226,15 @@ function InvoiceModal({
                 </tr>
               </thead>
               <tbody>
-                {invoice.lines.map((line) => (
-                  <tr key={line.id} className="border-b border-slate-100 last:border-b-0">
+                {invoice.items.map((item) => (
+                  <tr key={item.productId} className="border-b border-slate-100 last:border-b-0">
                     <td className="py-3">
-                      <div className="font-medium text-slate-900">{productName(line.productId)}</div>
-                      {line.productSku && <div className="font-mono text-xs text-slate-500">SKU {line.productSku}</div>}
-                      <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
-                        {line.orderNumber}
-                        {invoice.lines.length > 1 && <StatusBadge status={line.status} />}
-                      </div>
+                      <div className="font-medium text-slate-900">{item.productName}</div>
+                      {item.sku && <div className="font-mono text-xs text-slate-500">SKU {item.sku}</div>}
                     </td>
-                    <td className="py-3 text-right">{line.quantity}</td>
-                    <td className="py-3 text-right">{money(line.quantity ? line.totalAmount / line.quantity : line.totalAmount)}</td>
-                    <td className="py-3 text-right font-medium text-slate-900">{money(line.totalAmount)}</td>
+                    <td className="py-3 text-right">{item.quantity}</td>
+                    <td className="py-3 text-right">{money(item.unitPrice)}</td>
+                    <td className="py-3 text-right font-medium text-slate-900">{money(item.lineTotal)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -256,7 +244,7 @@ function InvoiceModal({
           <div className="ml-auto w-full max-w-xs space-y-2 border-t border-slate-200 pt-4">
             <div className="flex justify-between">
               <span className="text-slate-500">Items</span>
-              <span>{invoice.lines.reduce((sum, l) => sum + l.quantity, 0)}</span>
+              <span>{totalUnits(invoice)}</span>
             </div>
             <div className="flex justify-between text-base font-semibold text-slate-900">
               <span>Total</span>
@@ -281,7 +269,6 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<AdminOrderDto[]>([]);
   const [sellerNames, setSellerNames] = useState<Record<string, string>>({});
   const [sellerEmails, setSellerEmails] = useState<Record<string, string>>({});
-  const [productNames, setProductNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -300,16 +287,14 @@ export default function AdminOrdersPage() {
     (async () => {
       try {
         // The orders endpoint only paginates (no filters), so load everything and filter/sort here.
-        const [allOrders, sellers, products] = await Promise.all([
+        const [allOrders, sellers] = await Promise.all([
           fetchAll((p) => getAdminOrders({ page: p, pageSize: 100 })),
           fetchAll((p) => getAdminSellers({ page: p, pageSize: 100 })).catch(() => []),
-          fetchAll((p) => getAdminProducts({ page: p, pageSize: 100 })).catch(() => []),
         ]);
         if (cancelled) return;
         setOrders(allOrders);
         setSellerNames(Object.fromEntries(sellers.map((s) => [s.id, s.shopName || s.fullName])));
         setSellerEmails(Object.fromEntries(sellers.map((s) => [s.id, s.email])));
-        setProductNames(Object.fromEntries(products.map((p) => [p.id, p.name])));
       } catch (err) {
         if (!cancelled) setError(err instanceof ApiError ? err.message : "Failed to load orders.");
       } finally {
@@ -322,7 +307,6 @@ export default function AdminOrdersPage() {
   }, [ready]);
 
   const sellerName = (id: string) => sellerNames[id] ?? "Unknown seller";
-  const productName = (id: string) => productNames[id] ?? "Product";
 
   const invoices = useMemo(() => buildInvoices(orders), [orders]);
 
@@ -337,9 +321,9 @@ export default function AdminOrdersPage() {
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return invoices
-      .filter((inv) => statusFilter === "All" || inv.lines.some((l) => l.status === statusFilter))
+      .filter((inv) => statusFilter === "All" || inv.status === statusFilter)
       .filter((inv) => !sellerFilter || inv.sellerId === sellerFilter)
-      .filter((inv) => !term || inv.customerName.toLowerCase().includes(term) || inv.lines.some((l) => l.orderNumber.toLowerCase().includes(term) || l.productSku?.toLowerCase().includes(term)));
+      .filter((inv) => !term || inv.customerName.toLowerCase().includes(term) || inv.orderNumber.toLowerCase().includes(term) || inv.items.some((item) => item.productName.toLowerCase().includes(term) || item.sku?.toLowerCase().includes(term)));
   }, [invoices, statusFilter, sellerFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -348,7 +332,7 @@ export default function AdminOrdersPage() {
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    invoices.forEach((inv) => new Set(inv.lines.map((l) => l.status)).forEach((s) => (counts[s] = (counts[s] ?? 0) + 1)));
+    invoices.forEach((inv) => (counts[inv.status] = (counts[inv.status] ?? 0) + 1));
     return counts;
   }, [invoices]);
 
@@ -358,38 +342,30 @@ export default function AdminOrdersPage() {
   const confirmStatusChange = async (note: string) => {
     if (!pendingInvoice || !pending) return;
     const { status } = pending;
-    const targets = pendingInvoice.lines.filter((l) => l.status !== status);
     setSaving(true);
     setError("");
     setNotice("");
-    const results = await Promise.allSettled(targets.map((l) => updateOrderStatus(l.id, { status, note })));
-    const succeeded = new Set<string>();
-    const failures: string[] = [];
-    results.forEach((result, index) => {
-      if (result.status === "fulfilled") succeeded.add(targets[index].id);
-      else failures.push(result.reason instanceof ApiError ? result.reason.errors[0] ?? result.reason.message : "Update failed.");
-    });
-    if (succeeded.size) {
-      setOrders((current) => current.map((o) => (succeeded.has(o.id) ? { ...o, status } : o)));
-    }
-    if (failures.length) {
-      setError(`${failures.length} of ${targets.length} item(s) could not be updated: ${failures[0]}`);
-    } else {
+    try {
+      await updateOrderStatus(pendingInvoice.key, { status, note });
+      setOrders((current) => current.map((o) => (o.id === pendingInvoice.key ? { ...o, status } : o)));
       setNotice(`${invoiceNumber(pendingInvoice)} marked as ${statusLabel(status)}.`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.errors[0] ?? err.message : "Failed to update the order status.");
+    } finally {
+      setSaving(false);
+      setPending(null);
     }
-    setSaving(false);
-    setPending(null);
   };
 
   // Picking a status only stages it; nothing is sent until the admin confirms in the dialog.
   const statusSelect = (invoice: Invoice, dark = false) => (
     <select
-      value={ADMIN_SETTABLE.includes(invoice.status as OrderStatus) ? invoice.status : ""}
+      value={ADMIN_SETTABLE.includes(invoice.status) ? invoice.status : ""}
       onChange={(e) => e.target.value && setPending({ invoiceKey: invoice.key, status: e.target.value as OrderStatus })}
       aria-label={`Change status of ${invoiceNumber(invoice)}`}
       className={`rounded-lg border px-2 py-1.5 text-xs font-medium outline-none focus:border-[var(--brand)] ${dark ? "border-white/30 bg-white text-slate-700" : "border-slate-200 bg-white text-slate-700"}`}
     >
-      {!ADMIN_SETTABLE.includes(invoice.status as OrderStatus) && (
+      {!ADMIN_SETTABLE.includes(invoice.status) && (
         <option value="" disabled>
           {statusLabel(invoice.status)} – change to…
         </option>
@@ -464,16 +440,7 @@ export default function AdminOrdersPage() {
               </div>
               <p className="mt-4 text-sm text-slate-700">{invoice.customerName}</p>
               <p className="text-sm text-slate-500">{sellerName(invoice.sellerId)}</p>
-              <p className="mt-1 text-sm text-slate-500">
-                {invoice.lines.length === 1 ? (
-                  <>
-                    {productName(invoice.lines[0].productId)} × {invoice.lines[0].quantity}
-                    {invoice.lines[0].productSku && <span className="block font-mono text-xs text-slate-400">{invoice.lines[0].productSku}</span>}
-                  </>
-                ) : (
-                  `${invoice.lines.length} products`
-                )}
-              </p>
+              <p className="mt-1 text-sm text-slate-500"><ItemsSummary invoice={invoice} /></p>
               <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-3 text-sm">
                 <span className="text-slate-500">{new Date(invoice.createdAtUtc).toLocaleDateString()}</span>
                 <strong>{money(invoice.total)}</strong>
@@ -510,16 +477,7 @@ export default function AdminOrdersPage() {
                     <td className="px-4 py-3 font-medium text-slate-800">{invoiceNumber(invoice)}</td>
                     <td className="px-4 py-3 text-slate-700">{invoice.customerName}</td>
                     <td className="px-4 py-3 text-slate-700">{sellerName(invoice.sellerId)}</td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {invoice.lines.length === 1 ? (
-                        <>
-                          {productName(invoice.lines[0].productId)} × {invoice.lines[0].quantity}
-                          {invoice.lines[0].productSku && <span className="block font-mono text-xs text-slate-400">{invoice.lines[0].productSku}</span>}
-                        </>
-                      ) : (
-                        `${invoice.lines.length} products`
-                      )}
-                    </td>
+                    <td className="px-4 py-3 text-slate-600"><ItemsSummary invoice={invoice} /></td>
                     <td className="px-4 py-3 text-right font-medium text-slate-800">{money(invoice.total)}</td>
                     <td className="px-4 py-3"><StatusBadge status={invoice.status} /></td>
                     <td className="px-4 py-3 text-slate-600">{new Date(invoice.createdAtUtc).toLocaleString()}</td>
@@ -556,7 +514,6 @@ export default function AdminOrdersPage() {
           invoice={detailInvoice}
           sellerName={sellerName(detailInvoice.sellerId)}
           sellerEmail={sellerEmails[detailInvoice.sellerId]}
-          productName={productName}
           statusControl={<>Status: {statusSelect(detailInvoice, true)}</>}
           onClose={() => setDetailKey(null)}
         />

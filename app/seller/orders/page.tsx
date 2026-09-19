@@ -6,9 +6,8 @@ import { Check, CheckCircle2, Copy, Eye, PackageCheck, Search, Truck, Wallet, X,
 import { useResponsiveView, ViewToggle } from "@/app/components/ViewToggle";
 import { ProductThumbnail } from "@/app/components/ProductThumbnail";
 import { getSellerOrders, getSellerWallet, pickSellerOrder } from "@/lib/api/seller";
-import { getSellerProductById } from "@/lib/api/sellerProducts";
 import { ApiError } from "@/lib/api/client";
-import type { OrderStatus, ProductDto, SellerOrderDto } from "@/lib/api/types";
+import type { OrderStatus, SellerOrderDto } from "@/lib/api/types";
 import { useAuthGuard } from "@/lib/api/useAuthGuard";
 
 const statusStyles: Record<OrderStatus, { dot: string; badge: string }> = {
@@ -74,6 +73,12 @@ function PickAction({
   );
 }
 
+const totalQuantity = (order: SellerOrderDto) => order.items.reduce((sum, item) => sum + item.quantity, 0);
+
+// "Wireless Headphones" or "Wireless Headphones + 2 more"
+const itemsLabel = (order: SellerOrderDto) =>
+  order.items.length === 0 ? "—" : order.items.length === 1 ? order.items[0].productName : `${order.items[0].productName} + ${order.items.length - 1} more`;
+
 // Where an order is in its journey. Anything outside this list (cancelled, returned…) just shows its badge.
 const JOURNEY: { status: OrderStatus; label: string; icon: typeof Check }[] = [
   { status: "Pending", label: "Placed", icon: ClipboardList },
@@ -127,20 +132,16 @@ function Stat({ label, value, tone = "default", icon }: { label: string; value: 
 
 function OrderDetailsDialog({
   order,
-  product,
   balance,
   onClose,
   onPick,
 }: {
   order: SellerOrderDto;
-  product?: ProductDto;
   balance: number | null;
   onClose: () => void;
   onPick: (order: SellerOrderDto) => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const sku = order.productSku ?? product?.sku;
-  const total = order.sellingPrice * order.quantity;
 
   // Escape closes; the page behind stays put while the dialog is open.
   useEffect(() => {
@@ -194,29 +195,36 @@ function OrderDetailsDialog({
 
         {/* body */}
         <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
-          <div className="flex items-center gap-4">
-            <ProductThumbnail name={product?.name ?? "Product"} imageUrls={product?.imageUrls} className="h-20 w-20 shrink-0" bare />
-            <div className="min-w-0">
-              <p className="line-clamp-2 text-base font-semibold text-slate-900">{product?.name ?? "Product"}</p>
-              {sku && <p className="mt-0.5 font-mono text-xs text-slate-500">Code: {sku}</p>}
-              <p className="mt-1 text-sm text-slate-500">
-                {order.quantity} × {currency.format(order.sellingPrice)}
-              </p>
+          <section aria-label="Items in this order">
+            <div className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <span>Items</span>
+              <span>{order.items.length} product{order.items.length === 1 ? "" : "s"} · {totalQuantity(order)} unit{totalQuantity(order) === 1 ? "" : "s"}</span>
             </div>
-          </div>
+            <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200">
+              {order.items.map((item) => (
+                <li key={item.productId} className="flex items-center gap-3 p-3">
+                  <ProductThumbnail name={item.productName} imageUrls={item.imageUrl ? [item.imageUrl] : []} className="h-14 w-14 shrink-0" bare />
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-sm font-semibold text-slate-900">{item.productName}</p>
+                    {item.sku && <p className="font-mono text-xs text-slate-500">{item.sku}</p>}
+                    <p className="text-xs text-slate-500">{item.quantity} × {currency.format(item.unitPrice)}</p>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold tabular-nums text-slate-900">{currency.format(item.lineTotal)}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
 
           <OrderJourney status={order.status} />
 
           <div className="grid grid-cols-2 gap-3">
-            <Stat label="Order total" value={currency.format(total)} icon={<BadgeDollarSign className="h-3.5 w-3.5" />} />
+            <Stat label="Order total" value={currency.format(order.totalAmount)} icon={<BadgeDollarSign className="h-3.5 w-3.5" />} />
             <Stat label="Expected profit" value={currency.format(order.expectedProfit)} tone="good" />
             <Stat label="Cost to pick" value={currency.format(order.pickCost)} tone="brand" icon={<Wallet className="h-3.5 w-3.5" />} />
-            <Stat label="Quantity" value={String(order.quantity)} />
+            <Stat label="Items" value={String(order.items.length)} />
           </div>
 
           <dl className="divide-y divide-slate-100 rounded-2xl border border-slate-200 text-sm">
-            <div className="flex justify-between gap-4 px-4 py-2.5"><dt className="text-slate-500">Quantity</dt><dd className="font-medium text-slate-800">{order.quantity}</dd></div>
-            <div className="flex justify-between gap-4 px-4 py-2.5"><dt className="text-slate-500">Price per unit</dt><dd className="font-medium text-slate-800">{currency.format(order.sellingPrice)}</dd></div>
             <div className="flex justify-between gap-4 px-4 py-2.5"><dt className="text-slate-500">Order number</dt><dd className="break-all text-right font-mono text-sm font-medium text-slate-800">{order.orderNumber}</dd></div>
           </dl>
         </div>
@@ -241,7 +249,6 @@ export default function SellerOrdersPage() {
   const ready = useAuthGuard("Seller");
   const [view, setView] = useResponsiveView();
   const [orders, setOrders] = useState<SellerOrderDto[]>([]);
-  const [products, setProducts] = useState<Record<string, ProductDto>>({});
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -262,18 +269,6 @@ export default function SellerOrdersPage() {
         setOrders(result.items);
         getSellerWallet().then((wallet) => setBalance(wallet.balance)).catch(() => {});
 
-        const uniqueProductIds = Array.from(new Set(result.items.map((order) => order.productId)));
-        const entries = await Promise.all(
-          uniqueProductIds.map(async (productId) => {
-            try {
-              const product = await getSellerProductById(productId);
-              return [productId, product] as const;
-            } catch {
-              return null;
-            }
-          })
-        );
-        setProducts(Object.fromEntries(entries.filter((entry): entry is readonly [string, ProductDto] => entry !== null)));
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Failed to load orders.");
       } finally {
@@ -285,12 +280,12 @@ export default function SellerOrdersPage() {
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return orders;
-    return orders.filter((order) => {
-      const productName = products[order.productId]?.name ?? "";
-      const sku = order.productSku ?? products[order.productId]?.sku ?? "";
-      return order.orderNumber.toLowerCase().includes(query) || productName.toLowerCase().includes(query) || sku.toLowerCase().includes(query);
-    });
-  }, [orders, products, search]);
+    return orders.filter(
+      (order) =>
+        order.orderNumber.toLowerCase().includes(query) ||
+        order.items.some((item) => item.productName.toLowerCase().includes(query) || (item.sku ?? "").toLowerCase().includes(query)),
+    );
+  }, [orders, search]);
 
   const confirmPick = async () => {
     if (!pickTarget) return;
@@ -365,25 +360,29 @@ export default function SellerOrdersPage() {
       ) : view === "grid" ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((order) => {
-            const product = products[order.productId];
             return (
               <article key={order.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="truncate text-sm font-semibold text-slate-900">{order.orderNumber}</h2>
                   <StatusBadge status={order.status} />
                 </div>
-                <div className="mt-3 flex items-center gap-3">
-                  <ProductThumbnail name={product?.name ?? "Product"} imageUrls={product?.imageUrls} className="h-14 w-14 shrink-0" bare />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-slate-800">{product?.name ?? order.productId}</p>
-                    {(order.productSku ?? product?.sku) && <p className="font-mono text-xs text-slate-400">{order.productSku ?? product?.sku}</p>}
-                    <p className="text-xs text-slate-500">Qty: {order.quantity}</p>
-                  </div>
-                </div>
+                <ul className="mt-3 space-y-2">
+                  {order.items.slice(0, 3).map((item) => (
+                    <li key={item.productId} className="flex items-center gap-3">
+                      <ProductThumbnail name={item.productName} imageUrls={item.imageUrl ? [item.imageUrl] : []} className="h-12 w-12 shrink-0" bare />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-slate-800">{item.productName}</p>
+                        {item.sku && <p className="font-mono text-xs text-slate-400">{item.sku}</p>}
+                        <p className="text-xs text-slate-500">Qty: {item.quantity}</p>
+                      </div>
+                    </li>
+                  ))}
+                  {order.items.length > 3 && <li className="pl-1 text-xs font-medium text-slate-500">+ {order.items.length - 3} more product{order.items.length - 3 === 1 ? "" : "s"}</li>}
+                </ul>
                 <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <p className="text-xs text-slate-500">Selling Price</p>
-                    <p className="font-medium text-slate-800">{currency.format(order.sellingPrice)}</p>
+                    <p className="text-xs text-slate-500">Order Total</p>
+                    <p className="font-medium text-slate-800">{currency.format(order.totalAmount)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-500">Expected Profit</p>
@@ -414,9 +413,9 @@ export default function SellerOrdersPage() {
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
                   <th className="px-4 py-3 font-medium">Order Number</th>
-                  <th className="px-4 py-3 font-medium">Product</th>
+                  <th className="px-4 py-3 font-medium">Products</th>
                   <th className="px-4 py-3 font-medium text-right">Qty</th>
-                  <th className="px-4 py-3 font-medium text-right">Selling Price</th>
+                  <th className="px-4 py-3 font-medium text-right">Order Total</th>
                   <th className="px-4 py-3 font-medium text-right">Expected Profit</th>
                   <th className="px-4 py-3 font-medium text-right">Cost to pick</th>
                   <th className="px-4 py-3 font-medium">Status</th>
@@ -426,21 +425,20 @@ export default function SellerOrdersPage() {
               </thead>
               <tbody>
                 {filtered.map((order) => {
-                  const product = products[order.productId];
                   return (
                     <tr key={order.id} className="border-b border-slate-200 last:border-b-0">
                       <td className="px-4 py-3 font-medium text-slate-800">{order.orderNumber}</td>
                       <td className="px-4 py-3 text-slate-700">
                         <div className="flex items-center gap-2">
-                          <ProductThumbnail name={product?.name ?? "Product"} imageUrls={product?.imageUrls} className="h-8 w-8" bare />
+                          <ProductThumbnail name={order.items[0]?.productName ?? "Product"} imageUrls={order.items[0]?.imageUrl ? [order.items[0].imageUrl] : []} className="h-8 w-8" bare />
                           <span className="min-w-0">
-                            <span className="block truncate">{product?.name ?? order.productId}</span>
-                            {(order.productSku ?? product?.sku) && <span className="block font-mono text-xs text-slate-400">{order.productSku ?? product?.sku}</span>}
+                            <span className="block truncate">{itemsLabel(order)}</span>
+                            {order.items[0]?.sku && <span className="block font-mono text-xs text-slate-400">{order.items[0].sku}{order.items.length > 1 ? " …" : ""}</span>}
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-600">{order.quantity}</td>
-                      <td className="px-4 py-3 text-right font-medium text-slate-800">{currency.format(order.sellingPrice)}</td>
+                      <td className="px-4 py-3 text-right text-slate-600">{totalQuantity(order)}</td>
+                      <td className="px-4 py-3 text-right font-medium text-slate-800">{currency.format(order.totalAmount)}</td>
                       <td className="px-4 py-3 text-right font-medium text-slate-800">{currency.format(order.expectedProfit)}</td>
                       <td className="px-4 py-3 text-right font-medium text-slate-800">{currency.format(order.pickCost)}</td>
                       <td className="px-4 py-3"><StatusBadge status={order.status} /></td>
@@ -469,7 +467,6 @@ export default function SellerOrdersPage() {
       {selectedOrder && (
         <OrderDetailsDialog
           order={selectedOrder}
-          product={products[selectedOrder.productId]}
           balance={balance}
           onClose={() => setSelectedOrder(null)}
           onPick={(o) => {

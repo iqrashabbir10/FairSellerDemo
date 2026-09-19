@@ -108,10 +108,10 @@ export default function SellerDashboardPage() {
                     <div key={order.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3">
                       <div>
                         <div className="font-medium text-slate-800">{order.orderNumber}</div>
-                        <div className="text-sm text-slate-500">Qty {order.quantity}</div>
+                        <div className="text-sm text-slate-500">{order.items.length} item{order.items.length === 1 ? "" : "s"} · Qty {order.items.reduce((sum, item) => sum + item.quantity, 0)}</div>
                       </div>
                       <div className="text-right">
-                        <div className="font-semibold text-slate-800">${order.sellingPrice.toFixed(2)}</div>
+                        <div className="font-semibold text-slate-800">${order.totalAmount.toFixed(2)}</div>
                         <div className="text-xs text-slate-500">{order.status}</div>
                       </div>
                     </div>

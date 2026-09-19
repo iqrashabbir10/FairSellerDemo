@@ -1,8 +1,7 @@
 // Shared fetch helper that unwraps the ApiResponse<T> envelope used by every endpoint.
 import type { ApiResponse, PagedRequest } from "./types";
 import { clearSession, getSession } from "./session";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://localhost:55980";
+import { API_BASE_URL as BASE_URL } from "./config";
 
 export class ApiError extends Error {
   status: number;

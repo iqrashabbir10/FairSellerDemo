@@ -209,18 +209,23 @@ export function markAdminSupportMessagesRead(conversationId: string) {
 
 // Attachments go to the dedicated multipart endpoint (`message` + `files`); it may reply with a single
 // message or a list, so normalise to one message. Plain text uses the JSON endpoint.
-export async function sendAdminSupportMessage(conversationId: string, message: string, attachment?: File | null) {
+export async function sendAdminSupportMessage(conversationId: string, message: string, attachment?: File | null, replyToMessageId?: string | null) {
   if (attachment) {
     const formData = new FormData();
     formData.append("message", message);
+    if (replyToMessageId) formData.append("replyToMessageId", replyToMessageId);
     formData.append("files", attachment);
     const result = await apiFetch<SupportMessageDto | SupportMessageDto[]>(`/api/admin/support/${conversationId}/messages/attachments`, { method: "POST", body: formData });
     return Array.isArray(result) ? result[result.length - 1] : result;
   }
   return apiFetch<SupportMessageDto>(`/api/admin/support/${conversationId}/messages`, {
     method: "POST",
-    body: { message },
+    body: { message, replyToMessageId: replyToMessageId ?? null },
   });
+}
+
+export function deleteAdminSupportMessage(conversationId: string, messageId: string) {
+  return apiFetch<unknown>(`/api/admin/support/${conversationId}/messages/${messageId}`, { method: "DELETE" });
 }
 
 export function getInviteCodes(request?: PagedRequest) {

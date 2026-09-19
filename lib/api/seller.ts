@@ -81,18 +81,23 @@ export function createSellerSupportConversation() {
 
 // Attachments go to the dedicated multipart endpoint (`message` + `files`); it may reply with a single
 // message or a list, so normalise to one message. Plain text uses the JSON endpoint.
-export async function sendSellerSupportMessage(conversationId: string, message: string, attachment?: File | null) {
+export async function sendSellerSupportMessage(conversationId: string, message: string, attachment?: File | null, replyToMessageId?: string | null) {
   if (attachment) {
     const formData = new FormData();
     formData.append("message", message);
+    if (replyToMessageId) formData.append("replyToMessageId", replyToMessageId);
     formData.append("files", attachment);
     const result = await apiFetch<SupportMessageDto | SupportMessageDto[]>(`/api/seller/support/${conversationId}/messages/attachments`, { method: "POST", body: formData });
     return Array.isArray(result) ? result[result.length - 1] : result;
   }
   return apiFetch<SupportMessageDto>(`/api/seller/support/${conversationId}/messages`, {
     method: "POST",
-    body: { message },
+    body: { message, replyToMessageId: replyToMessageId ?? null },
   });
+}
+
+export function deleteSellerSupportMessage(conversationId: string, messageId: string) {
+  return apiFetch<unknown>(`/api/seller/support/${conversationId}/messages/${messageId}`, { method: "DELETE" });
 }
 
 export function getSellerSupportMessages(conversationId: string, request?: PagedRequest) {

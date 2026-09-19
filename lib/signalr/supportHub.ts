@@ -2,10 +2,12 @@
 
 // Single shared SignalR connection for the admin<->seller support chat hub.
 import * as signalR from "@microsoft/signalr";
+import { API_BASE_URL } from "@/lib/api/config";
 import { getSession } from "@/lib/api/session";
 import type { NotificationPushDto, SupportConversationDto, SupportMessageDto } from "@/lib/api/types";
 
-const HUB_URL = `${(process.env.NEXT_PUBLIC_API_URL ?? "https://localhost:55980").replace(/\/+$/, "")}/hubs/support`;
+// API_BASE_URL is already cleaned of trailing slashes and backslashes, so the path can't come out with a double slash.
+const HUB_URL = `${API_BASE_URL}/hubs/support`;
 
 export type ConnectionState = "connected" | "reconnecting" | "disconnected";
 
@@ -201,6 +203,7 @@ export const onNewMessage = (handler: (message: SupportMessageDto) => void) => s
 export const onConversationStarted = (handler: (conversation: SupportConversationDto) => void) => subscribe("ConversationStarted", handler);
 export const onMessagesRead = (handler: (payload: { conversationId: string; readAtUtc: string }) => void) => subscribe("MessagesRead", handler);
 export const onNotificationReceived = (handler: (payload: NotificationPushDto) => void) => subscribe("NotificationReceived", handler);
+export const onMessageDeleted = (handler: (payload: { conversationId: string; messageId: string }) => void) => subscribe("MessageDeleted", handler);
 export const onMessagesDelivered = (handler: (payload: { conversationId: string; deliveredAtUtc: string }) => void) =>
   subscribe("MessagesDelivered", handler);
 

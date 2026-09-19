@@ -1,7 +1,8 @@
 "use client";
 
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowLeft, Paperclip, RotateCcw, SendHorizontal, Trash2, WifiOff, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, Ban, Paperclip, Reply, RotateCcw, SendHorizontal, Trash2, WifiOff, X } from "lucide-react";
+import type { ReplyPreviewDto } from "@/lib/api/types";
 import { ATTACHMENT_ACCEPT, MAX_ATTACHMENT_BYTES, formatBytes, validateAttachment } from "@/lib/chat/attachments";
 import { deliveryStatus, type ChatMessage, type useChatThread } from "@/lib/chat/useChatThread";
 import { ChatAttachmentBubble } from "./ChatAttachmentBubble";
@@ -23,22 +24,77 @@ function dayLabel(iso: string) {
   return date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: date.getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
 }
 
+// Quoted message shown at the top of a reply; clicking it scrolls to (and flashes) the original.
+function QuoteBlock({ reply, mine, userId, title, onJump }: { reply: ReplyPreviewDto; mine: boolean; userId: string | undefined; title: string; onJump: (id: string) => void }) {
+  const who = reply.senderUserId === userId ? "You" : title;
+  const body = reply.isDeleted ? "This message was deleted" : reply.message || (reply.hasAttachment ? "📎 Attachment" : "");
+  return (
+    <button
+      type="button"
+      onClick={() => onJump(reply.id)}
+      className={`mb-1.5 block w-full rounded-lg border-l-4 px-2.5 py-1.5 text-left text-xs ${mine ? "border-white/70 bg-white/15 text-white" : "border-[var(--brand)] bg-slate-100 text-slate-600"}`}
+    >
+      <span className={`block truncate font-semibold ${mine ? "text-white" : "text-[var(--brand)]"}`}>{who}</span>
+      <span className={`line-clamp-2 break-words ${reply.isDeleted ? "italic opacity-80" : ""}`}>{body}</span>
+    </button>
+  );
+}
+
 const Bubble = memo(function Bubble({
   item,
   mine,
+  userId,
+  title,
   onRetry,
   onDiscard,
+  onReply,
+  onDelete,
+  onJump,
 }: {
   item: ChatMessage;
   mine: boolean;
+  userId: string | undefined;
+  title: string;
   onRetry: (id: string) => void;
   onDiscard: (id: string) => void;
+  onReply: (item: ChatMessage) => void;
+  onDelete: (id: string) => void;
+  onJump: (id: string) => void;
 }) {
   const status = deliveryStatus(item);
+  const persisted = !item.localStatus;
+
+  if (item.isDeleted) {
+    return (
+      <div id={`msg-${item.id}`} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+        <div className="flex max-w-[80%] items-center gap-1.5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-3.5 py-2 text-sm italic text-slate-400 sm:max-w-[70%]">
+          <Ban className="h-3.5 w-3.5 shrink-0" />
+          {mine ? "You deleted this message" : "This message was deleted"}
+          <span className="ml-1 text-[10px] not-italic">{formatTime(item.createdAtUtc)}</span>
+        </div>
+      </div>
+    );
+  }
+
+  const actions = persisted && (
+    <div className="flex shrink-0 items-center gap-0.5 self-center opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+      <button type="button" onClick={() => onReply(item)} title="Reply" aria-label="Reply to this message" className="rounded-full p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700">
+        <Reply className="h-3.5 w-3.5" />
+      </button>
+      {mine && (
+        <button type="button" onClick={() => onDelete(item.id)} title="Delete for everyone" aria-label="Delete this message" className="rounded-full p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
+  );
+
   return (
-    <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+    <div id={`msg-${item.id}`} className={`group flex items-start gap-1 rounded-xl transition-colors ${mine ? "justify-end" : "justify-start"}`}>
+      {mine && actions}
       <div className="max-w-[80%] sm:max-w-[70%]">
         <div className={`rounded-2xl px-3.5 py-2 text-sm ${mine ? "rounded-br-md bg-[var(--brand)] text-white" : "rounded-bl-md bg-white text-slate-700 ring-1 ring-slate-200"} ${status === "failed" ? "opacity-80" : ""}`}>
+          {item.replyTo && <QuoteBlock reply={item.replyTo} mine={mine} userId={userId} title={title} onJump={onJump} />}
           <ChatAttachmentBubble item={item} mine={mine} />
           {item.message && <p className="whitespace-pre-wrap break-words">{item.message}</p>}
           <div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-white/80" : "text-slate-400"}`}>
@@ -58,6 +114,7 @@ const Bubble = memo(function Bubble({
           </div>
         )}
       </div>
+      {!mine && actions}
     </div>
   );
 });
@@ -83,7 +140,39 @@ export function ChatThread({
   emptyText?: string;
   onBack?: () => void;
 }) {
-  const { messages, loading, loadingOlder, hasMore, error, connection, loadOlder, send, retry, discard } = thread;
+  const { messages, loading, loadingOlder, hasMore, error, connection, loadOlder, send, retry, discard, deleteMessage } = thread;
+
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const startReply = useCallback((item: ChatMessage) => {
+    setReplyTo(item);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }, []);
+
+  // Scrolls to the quoted message and flashes it. If it's in older history that isn't loaded yet, say so
+  // rather than silently doing nothing.
+  const jumpTo = useCallback((id: string) => {
+    const el = document.getElementById(`msg-${id}`);
+    if (!el) {
+      setComposeError("That message is in older history. Scroll up and load earlier messages to see it.");
+      return;
+    }
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("bg-[var(--brand)]/15");
+    window.setTimeout(() => el.classList.remove("bg-[var(--brand)]/15"), 1400);
+  }, []);
+
+  const confirmDelete = async () => {
+    if (!confirmDeleteId) return;
+    setDeleting(true);
+    const problem = await deleteMessage(confirmDeleteId);
+    setDeleting(false);
+    setConfirmDeleteId(null);
+    if (problem) setComposeError(problem);
+    if (replyTo?.id === confirmDeleteId) setReplyTo(null);
+  };
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -165,11 +254,12 @@ export function ChatThread({
 
   const submit = () => {
     if (disabledReason) return;
-    const problem = send(text, file);
+    const problem = send(text, file, replyTo);
     if (problem) {
       setComposeError(problem);
       return;
     }
+    setReplyTo(null);
     setText("");
     setFile(null);
     setComposeError("");
@@ -216,8 +306,17 @@ export function ChatThread({
             <ArrowLeft className="h-5 w-5" />
           </button>
         )}
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand)]/10 text-sm font-semibold text-[var(--brand)]">
-          {title.slice(0, 2).toUpperCase()}
+        <div className="relative shrink-0">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--brand)]/10 text-sm font-semibold text-[var(--brand)]">
+            {title.slice(0, 2).toUpperCase()}
+          </div>
+          {/* WhatsApp-style presence dot on the avatar */}
+          {online !== undefined && online !== null && (
+            <span
+              className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white ${online ? "bg-emerald-500" : "bg-slate-300"}`}
+              aria-label={online ? "Online" : "Offline"}
+            />
+          )}
         </div>
         <div className="min-w-0">
           <h2 className="truncate text-base font-semibold text-slate-900">{title}</h2>
@@ -268,7 +367,18 @@ export function ChatThread({
                   <span className="rounded-full bg-slate-200/70 px-3 py-0.5 text-[11px] font-medium text-slate-600">{row.label}</span>
                 </div>
               ) : (
-                <Bubble key={row.key} item={row.item} mine={row.item.senderUserId === userId} onRetry={retry} onDiscard={discard} />
+                <Bubble
+                  key={row.key}
+                  item={row.item}
+                  mine={row.item.senderUserId === userId}
+                  userId={userId}
+                  title={title}
+                  onRetry={retry}
+                  onDiscard={discard}
+                  onReply={startReply}
+                  onDelete={setConfirmDeleteId}
+                  onJump={jumpTo}
+                />
               )
             )
           )}
@@ -293,6 +403,17 @@ export function ChatThread({
         }}
         className="border-t border-slate-200 bg-white p-3 sm:p-4"
       >
+        {replyTo && (
+          <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border-l-4 border-[var(--brand)] bg-slate-100 px-3 py-1.5 text-xs text-slate-600">
+            <span className="min-w-0">
+              <span className="block font-semibold text-[var(--brand)]">Replying to {replyTo.senderUserId === userId ? "yourself" : title}</span>
+              <span className="block truncate">{replyTo.message || (replyTo.attachments?.length ? "📎 Attachment" : "")}</span>
+            </span>
+            <button type="button" onClick={() => setReplyTo(null)} className="shrink-0 rounded p-0.5 hover:bg-slate-200" aria-label="Cancel reply">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
         {file && (
           <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-xs text-slate-700">
             <span className="flex min-w-0 items-center gap-2">
@@ -351,6 +472,23 @@ export function ChatThread({
         </div>
         {text.length > MAX_LENGTH - 300 && <div className="mt-1 text-right text-[11px] text-slate-400">{text.length}/{MAX_LENGTH}</div>}
       </form>
+
+      {confirmDeleteId && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-label="Delete message">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="text-base font-semibold text-slate-900">Delete this message?</h3>
+            <p className="mt-1 text-sm text-slate-500">It will be removed for everyone in this conversation, including any attached file. This can&apos;t be undone.</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setConfirmDeleteId(null)} disabled={deleting} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                Cancel
+              </button>
+              <button onClick={confirmDelete} disabled={deleting} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {dragging && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-2xl border-2 border-dashed border-[var(--brand)] bg-white/80 text-sm font-semibold text-[var(--brand)]">

@@ -7,6 +7,7 @@ import {
   joinConversation,
   leaveConversation,
   onConnectionState,
+  onMessageDeleted,
   onMessagesDelivered,
   onMessagesRead,
   onReceiveMessage,
@@ -18,7 +19,7 @@ import { validateAttachment } from "./attachments";
 
 const PAGE_SIZE = 30;
 // Only used while the hub is down; when it's healthy, messages arrive over the socket instead.
-const FALLBACK_POLL_MS = 15000;
+const FALLBACK_POLL_MS = 4000;
 
 export type DeliveryStatus = "sending" | "failed" | "sent" | "delivered" | "read";
 
@@ -31,8 +32,12 @@ export interface ChatMessage extends SupportMessageDto {
 export interface ChatApi {
   getMessages: (conversationId: string, request: PagedRequest) => Promise<PagedResult<SupportMessageDto>>;
   markRead: (conversationId: string) => Promise<unknown>;
-  send: (conversationId: string, text: string, file?: File | null) => Promise<SupportMessageDto>;
+  send: (conversationId: string, text: string, file?: File | null, replyToMessageId?: string | null) => Promise<SupportMessageDto>;
+  remove: (conversationId: string, messageId: string) => Promise<unknown>;
 }
+
+// What a deleted message looks like locally: body, attachments and quote are gone, the tombstone stays.
+const asDeleted = (m: ChatMessage): ChatMessage => ({ ...m, isDeleted: true, message: "", attachments: null, localFile: undefined });
 
 export function deliveryStatus(message: ChatMessage): DeliveryStatus {
   if (message.localStatus) return message.localStatus;
@@ -79,6 +84,7 @@ export function useChatThread({ conversationId, userId, api }: { conversationId:
   const nextPageRef = useRef(2);
   const loadingOlderRef = useRef(false);
   const pendingFiles = useRef(new Map<string, File | null>());
+  const pendingReplies = useRef(new Map<string, string | null>());
   const apiRef = useRef(api);
   useEffect(() => {
     apiRef.current = api;
@@ -153,6 +159,18 @@ export function useChatThread({ conversationId, userId, api }: { conversationId:
       );
     });
 
+    // Also refresh any quote that points at the deleted message.
+    const offDeleted = onMessageDeleted(({ conversationId: cid, messageId }) => {
+      if (cid !== id) return;
+      setMessages((current) =>
+        current.map((m) => {
+          if (m.id === messageId) return asDeleted(m);
+          if (m.replyTo?.id === messageId) return { ...m, replyTo: { ...m.replyTo, message: "", hasAttachment: false, isDeleted: true } };
+          return m;
+        }),
+      );
+    });
+
     // After a drop we may have missed pushes — pull the newest page and merge it in.
     const offReconnected = onReconnected(() => {
       fetchLatest(id)
@@ -167,6 +185,7 @@ export function useChatThread({ conversationId, userId, api }: { conversationId:
       offReceive();
       offRead();
       offDelivered();
+      offDeleted();
       offReconnected();
       leaveConversation(id).catch(() => {});
     };
@@ -219,8 +238,9 @@ export function useChatThread({ conversationId, userId, api }: { conversationId:
     async (localId: string, text: string, file: File | null) => {
       if (!conversationId) return;
       try {
-        const sent = await apiRef.current.send(conversationId, text, file);
+        const sent = await apiRef.current.send(conversationId, text, file, pendingReplies.current.get(localId) ?? null);
         pendingFiles.current.delete(localId);
+        pendingReplies.current.delete(localId);
         setMessages((current) => mergeMessages(current.filter((m) => m.id !== localId), [sent]));
       } catch (err) {
         const reason = err instanceof ApiError ? err.errors[0] ?? err.message : "Couldn't send this message.";
@@ -232,7 +252,7 @@ export function useChatThread({ conversationId, userId, api }: { conversationId:
 
   /** Optimistically appends the message and sends it. Returns a validation error, or null on success. */
   const send = useCallback(
-    (text: string, file: File | null): string | null => {
+    (text: string, file: File | null, replyTo?: ChatMessage | null): string | null => {
       if (!conversationId || !userId) return "Conversation isn't ready yet.";
       const trimmed = text.trim();
       if (!trimmed && !file) return null;
@@ -242,7 +262,17 @@ export function useChatThread({ conversationId, userId, api }: { conversationId:
       }
       const localId = newLocalId();
       pendingFiles.current.set(localId, file);
+      pendingReplies.current.set(localId, replyTo?.id ?? null);
       const optimistic: ChatMessage = {
+        replyTo: replyTo
+          ? {
+              id: replyTo.id,
+              senderUserId: replyTo.senderUserId,
+              message: replyTo.message.slice(0, 140),
+              hasAttachment: !!replyTo.attachments?.length || !!replyTo.localFile,
+              isDeleted: !!replyTo.isDeleted,
+            }
+          : null,
         id: localId,
         conversationId,
         senderUserId: userId,
@@ -271,8 +301,27 @@ export function useChatThread({ conversationId, userId, api }: { conversationId:
 
   const discard = useCallback((localId: string) => {
     pendingFiles.current.delete(localId);
+    pendingReplies.current.delete(localId);
     setMessages((current) => current.filter((m) => m.id !== localId));
   }, []);
 
-  return { messages, loading, loadingOlder, hasMore, error, connection, loadOlder, send, retry, discard };
+  /** "Delete for everyone". Optimistic; restores the message and returns an error string if the server refuses. */
+  const deleteMessage = useCallback(
+    async (messageId: string): Promise<string | null> => {
+      if (!conversationId) return "Conversation isn't ready yet.";
+      const original = messages.find((m) => m.id === messageId);
+      if (!original) return null;
+      setMessages((current) => current.map((m) => (m.id === messageId ? asDeleted(m) : m)));
+      try {
+        await apiRef.current.remove(conversationId, messageId);
+        return null;
+      } catch (err) {
+        setMessages((current) => current.map((m) => (m.id === messageId ? original : m)));
+        return err instanceof ApiError ? err.errors[0] ?? err.message : "Couldn't delete this message.";
+      }
+    },
+    [conversationId, messages],
+  );
+
+  return { messages, loading, loadingOlder, hasMore, error, connection, loadOlder, send, retry, discard, deleteMessage };
 }
