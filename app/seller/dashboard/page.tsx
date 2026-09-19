@@ -1,16 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CircleDollarSign, Package, ShoppingBag, TrendingUp, Wallet } from "lucide-react";
-import { getSellerDashboard, getSellerOrders } from "@/lib/api/seller";
+import Link from "next/link";
+import { ArrowRight, CircleDollarSign, Package, ShoppingBag, TrendingUp, Wallet } from "lucide-react";
+import { getSellerDashboard, getSellerListings, getSellerOrders } from "@/lib/api/seller";
 import { ApiError } from "@/lib/api/client";
-import type { SellerDashboardDto, SellerOrderDto } from "@/lib/api/types";
+import type { SellerDashboardDto, SellerOrderDto, SellerProductDto } from "@/lib/api/types";
 import { useAuthGuard } from "@/lib/api/useAuthGuard";
+import { ProductThumbnail } from "@/app/components/ProductThumbnail";
+
+// A listing counts as "running low" when fewer than this many units are left.
+const LOW_QUANTITY = 5;
 
 export default function SellerDashboardPage() {
   const ready = useAuthGuard("Seller");
   const [dashboard, setDashboard] = useState<SellerDashboardDto | null>(null);
   const [recentOrders, setRecentOrders] = useState<SellerOrderDto[]>([]);
+  const [listings, setListings] = useState<SellerProductDto[]>([]);
+  const [listingsError, setListingsError] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -30,6 +37,14 @@ export default function SellerDashboardPage() {
         setError(err instanceof ApiError ? err.message : "Failed to load dashboard.");
       } finally {
         setLoading(false);
+      }
+
+      // Listings load on their own so a problem here never blanks the rest of the dashboard.
+      try {
+        const result = await getSellerListings({ page: 1, pageSize: 5, maxQuantity: LOW_QUANTITY - 1 });
+        setListings(result.items);
+      } catch (err) {
+        setListingsError(err instanceof ApiError ? err.message : "Couldn't load your listings.");
       }
     })();
   }, [ready]);
@@ -125,6 +140,47 @@ export default function SellerDashboardPage() {
               </div>
             </section>
           </div>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-4 w-1 rounded-full bg-amber-500" />
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900">Top Products Running Low</h2>
+                  <p className="text-xs text-slate-500">Listings with fewer than {LOW_QUANTITY} units left</p>
+                </div>
+              </div>
+              <Link href="/seller/my-listings" className="inline-flex items-center gap-1 text-sm font-medium text-[var(--brand)] hover:underline">
+                My Listings <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            {listingsError ? (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{listingsError}</div>
+            ) : listings.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {listings.map((item) => (
+                  <div key={item.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <ProductThumbnail name={item.productName} imageUrls={item.imageUrls} className="h-14 w-14 shrink-0" bare />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium text-slate-800">{item.productName}</div>
+                      <div className="mt-1 flex gap-3 text-xs text-slate-600">
+                        <span>Base <span className="font-semibold text-slate-800">${item.supplierCost.toFixed(2)}</span></span>
+                        <span>Seller <span className="font-semibold text-slate-800">${item.sellingPrice.toFixed(2)}</span></span>
+                      </div>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${item.quantity === 0 ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"}`}>
+                      {item.quantity === 0 ? "Out" : `${item.quantity} left`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-slate-500">
+                Nothing is running low — every listing has {LOW_QUANTITY} or more units.
+              </div>
+            )}
+          </section>
         </>
       )}
     </div>

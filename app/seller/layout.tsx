@@ -1,9 +1,10 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, Menu, MessageSquareText, Package, Settings, ShoppingBag, WalletCards, X, LogOut } from "lucide-react";
+import { BarChart3, ListChecks, Menu, MessageSquareText, Package, Settings, ShoppingBag, WalletCards, X, LogOut } from "lucide-react";
 import { clearSession } from "@/lib/api/session";
+import { keepSupportConnectionAlive, stopSupportConnection } from "@/lib/signalr/supportHub";
 import { logout } from "@/lib/api/auth";
 import { SidebarUser } from "@/app/components/SidebarUser";
 import { BackToTop } from "@/app/components/BackToTop";
@@ -12,6 +13,7 @@ import { ThemePicker } from "@/app/components/ThemePicker";
 const navigation = [
   { label: "Dashboard", href: "/seller/dashboard", icon: BarChart3 },
   { label: "Products", href: "/seller/products", icon: Package },
+  { label: "My Listings", href: "/seller/my-listings", icon: ListChecks },
   { label: "Orders", href: "/seller/orders", icon: ShoppingBag },
   { label: "Wallet / Withdraw", href: "/seller/wallet", icon: WalletCards },
   { label: "Conversations", href: "/seller/conversations", icon: MessageSquareText },
@@ -99,7 +101,11 @@ export default function SellerLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
 
+  // Staying connected to the chat hub while signed in is what makes this user show as "online" to the other side.
+  useEffect(() => keepSupportConnectionAlive(), []);
+
   const handleLogout = () => {
+    void stopSupportConnection();
     logout().catch(() => {});
     clearSession();
     router.push("/");

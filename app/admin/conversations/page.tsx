@@ -1,438 +1,297 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Paperclip, Plus, Search, SendHorizontal, X } from "lucide-react";
-import { getAdminSellers, getAdminSupportConversations, getAdminSupportMessages, markAdminSupportMessagesRead, sendAdminSupportMessage } from "@/lib/api/admin";
+import { Search } from "lucide-react";
+import { getAdminSupportConversations, getAdminSupportMessages, markAdminSupportMessagesRead, sendAdminSupportMessage } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { getSession } from "@/lib/api/session";
-import { joinConversation, leaveConversation, onConversationStarted, onMessagesRead, onNewMessage, onReceiveMessage, onReconnected } from "@/lib/signalr/supportHub";
+import { onConversationStarted, onNewMessage, onReconnected, watchSellerPresence } from "@/lib/signalr/supportHub";
 import { playMessageSound } from "@/lib/notificationSound";
-import { getCachedMessages, setCachedMessages } from "@/lib/chatMessageCache";
-import { MessageStatusTicks } from "@/app/components/MessageStatusTicks";
-import { ChatAttachmentBubble } from "@/app/components/ChatAttachmentBubble";
-import type { AdminSellerDto, SupportConversationSummaryDto, SupportMessageDto } from "@/lib/api/types";
+import { useChatThread, type ChatApi } from "@/lib/chat/useChatThread";
+import { ChatThread } from "@/app/components/ChatThread";
+import type { SupportConversationSummaryDto } from "@/lib/api/types";
 import { useAuthGuard } from "@/lib/api/useAuthGuard";
 
-function addUnique(current: SupportMessageDto[], incoming: SupportMessageDto) {
-  if (current.some((message) => message.id === incoming.id)) return current;
-  return [...current, incoming];
+const LIST_PAGE_SIZE = 25;
+
+const adminChatApi: ChatApi = {
+  getMessages: getAdminSupportMessages,
+  markRead: markAdminSupportMessagesRead,
+  send: sendAdminSupportMessage,
+};
+
+function formatListTime(iso: string) {
+  const date = new Date(iso);
+  const now = new Date();
+  if (date.toDateString() === now.toDateString()) return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+// Page-1 results replace matching rows and lead the list; anything the admin already scrolled to stays.
+function mergeFirstPage(current: SupportConversationSummaryDto[], firstPage: SupportConversationSummaryDto[]) {
+  const ids = new Set(firstPage.map((c) => c.id));
+  return [...firstPage, ...current.filter((c) => !ids.has(c.id))];
 }
 
 export default function AdminConversationsPage() {
   const ready = useAuthGuard("Admin");
-  const [conversations, setConversations] = useState<SupportConversationSummaryDto[]>([]);
-  const [conversationsLoading, setConversationsLoading] = useState(true);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [unreadIds, setUnreadIds] = useState<Set<string>>(new Set());
-  const [messages, setMessages] = useState<SupportMessageDto[]>([]);
-  const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set());
-  const [readUntil, setReadUntil] = useState<string | null>(null);
-  const [messagesLoading, setMessagesLoading] = useState(false);
-  const [messagesUnavailable, setMessagesUnavailable] = useState(false);
-  const [message, setMessage] = useState("");
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState("");
-  const [sellers, setSellers] = useState<AdminSellerDto[]>([]);
-  const [sellerNotice, setSellerNotice] = useState("");
-  const [composeOpen, setComposeOpen] = useState(false);
-  const [composeSearch, setComposeSearch] = useState("");
-  const [attachment, setAttachment] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const activeIdRef = useRef<string | null>(null);
   const userId = getSession()?.userId;
 
+  const [conversations, setConversations] = useState<SupportConversationSummaryDto[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [nextPage, setNextPage] = useState(2);
+  const [listLoading, setListLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [listError, setListError] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [sellerOnline, setSellerOnline] = useState<boolean | null>(null);
+
+  const activeIdRef = useRef<string | null>(null);
+  const searchRef = useRef("");
+  const conversationsRef = useRef<SupportConversationSummaryDto[]>([]);
   useEffect(() => {
     activeIdRef.current = activeId;
   }, [activeId]);
+  useEffect(() => {
+    searchRef.current = search;
+  }, [search]);
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
-  const refetchConversations = useCallback(async () => {
-    setConversationsLoading(true);
+  // Debounce so typing doesn't fire a request per keystroke.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
+
+  const loadFirstPage = useCallback(async (mode: "replace" | "merge") => {
     try {
-      const items = await getAdminSupportConversations();
-      setConversations(items);
-      setError("");
+      const result = await getAdminSupportConversations({ page: 1, pageSize: LIST_PAGE_SIZE, search: searchRef.current || undefined });
+      setConversations((current) => (mode === "merge" ? mergeFirstPage(current, result.items) : result.items));
+      setTotalCount(result.totalCount);
+      if (mode === "replace") setNextPage(2);
+      setListError("");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to load conversations.");
+      setListError(err instanceof ApiError ? err.message : "Failed to load conversations.");
     } finally {
-      setConversationsLoading(false);
+      setListLoading(false);
     }
   }, []);
 
-  // Hydrate the inbox on mount (required — SignalR has no history), then re-hydrate whenever the
-  // tab regains focus or the hub recovers from a dropped connection.
+  // A new search term restarts the list.
   useEffect(() => {
     if (!ready) return;
-    refetchConversations();
+    setListLoading(true);
+    loadFirstPage("replace");
+  }, [ready, search, loadFirstPage]);
 
-    (async () => {
-      try {
-        const result = await getAdminSellers({ pageSize: 200 });
-        setSellers(result.items);
-      } catch (err) {
-        setError(err instanceof ApiError ? err.message : "Failed to load sellers.");
-      }
-    })();
-
-    const onFocus = () => refetchConversations();
-    window.addEventListener("focus", onFocus);
-    const unsubscribeReconnected = onReconnected(() => refetchConversations());
-
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      unsubscribeReconnected();
-    };
-  }, [ready, refetchConversations]);
-
-  // Admins auto-join a server-side "admins" group, so these arrive without JoinConversation per
-  // thread. A brand new conversation (or one we don't have cached yet) re-hydrates the whole list
-  // so we always show the real seller/shop name instead of a placeholder.
-  useEffect(() => {
-    if (!ready) return;
-
-    const unsubscribeStarted = onConversationStarted(() => {
-      refetchConversations();
-    });
-
-    const unsubscribeNew = onNewMessage((incoming) => {
-      const isActive = activeIdRef.current === incoming.conversationId;
-      let found = false;
+  const loadMore = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const result = await getAdminSupportConversations({ page: nextPage, pageSize: LIST_PAGE_SIZE, search: search || undefined });
       setConversations((current) => {
-        const existing = current.find((entry) => entry.id === incoming.conversationId);
-        if (!existing) return current;
-        found = true;
-        const rest = current.filter((entry) => entry.id !== incoming.conversationId);
-        return [{ ...existing, lastMessage: incoming.message, lastMessageAtUtc: incoming.createdAtUtc }, ...rest];
+        const ids = new Set(current.map((c) => c.id));
+        return [...current, ...result.items.filter((c) => !ids.has(c.id))];
       });
-      if (!found) refetchConversations();
-      if (!isActive) {
-        setUnreadIds((current) => new Set(current).add(incoming.conversationId));
-        if (incoming.senderUserId !== userId) playMessageSound("received");
-      }
+      setNextPage(result.page + 1);
+      setTotalCount(result.totalCount);
+    } catch (err) {
+      setListError(err instanceof ApiError ? err.message : "Failed to load more conversations.");
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // Live inbox updates. Admins are in a server-side "admins" group, so these arrive without joining each thread.
+  useEffect(() => {
+    if (!ready) return;
+
+    const offStarted = onConversationStarted(() => loadFirstPage("merge"));
+
+    const offNew = onNewMessage((incoming) => {
+      const isActive = activeIdRef.current === incoming.conversationId;
+      const fromOther = incoming.senderUserId !== userId;
+      const known = conversationsRef.current.some((c) => c.id === incoming.conversationId);
+      setConversations((current) => {
+        const existing = current.find((c) => c.id === incoming.conversationId);
+        if (!existing) return current;
+        const rest = current.filter((c) => c.id !== incoming.conversationId);
+        const preview = incoming.message || (incoming.attachments?.length ? "📎 Attachment" : existing.lastMessage);
+        return [
+          {
+            ...existing,
+            lastMessage: preview,
+            lastMessageAtUtc: incoming.createdAtUtc,
+            unreadCount: !isActive && fromOther ? existing.unreadCount + 1 : existing.unreadCount,
+          },
+          ...rest,
+        ];
+      });
+      // A thread we haven't loaded yet (or that isn't in the searched subset) — fetch fresh state.
+      if (!known) loadFirstPage("merge");
+      if (!isActive && fromOther) playMessageSound("received");
     });
 
-    return () => {
-      unsubscribeStarted();
-      unsubscribeNew();
-    };
-  }, [ready, userId, refetchConversations]);
+    const refresh = () => loadFirstPage("merge");
+    const offReconnected = onReconnected(refresh);
+    const onVisible = () => document.visibilityState === "visible" && refresh();
+    document.addEventListener("visibilitychange", onVisible);
 
-  // Join the open conversation's hub group, load its history, and listen for live messages.
-  // Also polls every few seconds as a fallback while the SignalR hub is unreachable, so a
-  // seller's reply still shows up without a manual refresh.
+    return () => {
+      offStarted();
+      offNew();
+      offReconnected();
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [ready, userId, loadFirstPage]);
+
+  const active = conversations.find((c) => c.id === activeId) ?? null;
+  const activeSellerUserId = active?.sellerUserId;
+
   useEffect(() => {
-    if (!activeId) {
-      setMessages([]);
+    if (!activeSellerUserId) {
+      setSellerOnline(null);
       return;
     }
-    let cancelled = false;
-    setMessagesLoading(true);
-    setMessagesUnavailable(false);
-    setMessages(getCachedMessages(activeId));
-    joinConversation(activeId).catch(() => {});
+    return watchSellerPresence(activeSellerUserId, setSellerOnline);
+  }, [activeSellerUserId]);
 
-    const fetchMessages = async (isInitial: boolean) => {
-      try {
-        const result = await getAdminSupportMessages(activeId, { pageSize: 100 });
-        if (cancelled) return;
-        setConfirmedIds((current) => {
-          const next = new Set(current);
-          result.items.forEach((item) => next.add(item.id));
-          return next;
-        });
-        setMessages((current) => {
-          const incomingNew = result.items.filter((item) => !current.some((existing) => existing.id === item.id));
-          if (!isInitial && incomingNew.some((item) => item.senderUserId !== userId)) {
-            playMessageSound("received");
-          }
-          return result.items;
-        });
-      } catch (err) {
-        if (cancelled) return;
-        // Backend route not deployed yet (404/405) — keep whatever is cached instead of blanking it.
-        if (err instanceof ApiError && (err.status === 404 || err.status === 405)) {
-          setMessagesUnavailable(true);
-        } else if (isInitial) {
-          setError(err instanceof ApiError ? err.message : "Failed to load messages.");
-        }
-      } finally {
-        if (!cancelled && isInitial) setMessagesLoading(false);
-      }
-    };
-
-    fetchMessages(true);
-    const pollId = window.setInterval(() => fetchMessages(false), 4000);
-
-    const unsubscribeReceive = onReceiveMessage((incoming) => {
-      if (incoming.conversationId === activeId) {
-        setConfirmedIds((current) => new Set(current).add(incoming.id));
-        setMessages((current) => {
-          if (current.some((message) => message.id === incoming.id)) return current;
-          if (incoming.senderUserId !== userId) playMessageSound("received");
-          return [...current, incoming];
-        });
-      }
-    });
-
-    // Speculative — only fires if the backend implements read receipts (see repo memory notes).
-    const unsubscribeRead = onMessagesRead((payload) => {
-      if (payload.conversationId === activeId) setReadUntil(payload.readAtUtc);
-    });
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(pollId);
-      unsubscribeReceive();
-      unsubscribeRead();
-      leaveConversation(activeId).catch(() => {});
-    };
-  }, [activeId, userId]);
-
-  const scrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [messages]);
-
-  // Keep the local cache in sync so a refresh (or the history GET failing) never loses a message
-  // that was actually sent/received successfully.
-  useEffect(() => {
-    if (activeId) setCachedMessages(activeId, messages);
-  }, [activeId, messages]);
-
-  // Tell the backend we've seen the seller's messages whenever we're actively viewing the thread
-  // (best-effort — a no-op if the backend hasn't implemented this route yet).
-  useEffect(() => {
-    if (!activeId) return;
-    const hasUnreadFromOther = messages.some((item) => item.senderUserId !== userId);
-    if (hasUnreadFromOther) markAdminSupportMessagesRead(activeId).catch(() => {});
-  }, [activeId, messages, userId]);
-
-  if (!ready) return null;
+  const thread = useChatThread({ conversationId: activeId, userId, api: adminChatApi });
 
   const openConversation = (id: string) => {
     setActiveId(id);
-    setSellerNotice("");
-    setUnreadIds((current) => {
-      if (!current.has(id)) return current;
-      const next = new Set(current);
-      next.delete(id);
-      return next;
-    });
+    setConversations((current) => current.map((c) => (c.id === id && c.unreadCount ? { ...c, unreadCount: 0 } : c)));
   };
 
-  const selectSeller = (sellerId: string) => {
-    setSellerNotice("");
-    setComposeOpen(false);
-    setComposeSearch("");
-    const match = conversations.find((entry) => entry.sellerId === sellerId);
-    if (match) {
-      openConversation(match.id);
-    } else {
-      setActiveId(null);
-      const seller = sellers.find((s) => s.id === sellerId);
-      setSellerNotice(`${seller?.fullName ?? "This seller"} hasn't started a conversation yet — admins can only reply once a seller messages first.`);
-    }
-  };
+  // Once the thread has marked messages read, keep the list preview in step with the open conversation.
+  const lastMessage = thread.messages[thread.messages.length - 1];
+  useEffect(() => {
+    if (!activeId || !lastMessage || lastMessage.localStatus) return;
+    setConversations((current) =>
+      current.map((c) =>
+        c.id === activeId && c.lastMessageAtUtc !== lastMessage.createdAtUtc
+          ? { ...c, lastMessage: lastMessage.message || (lastMessage.attachments?.length ? "📎 Attachment" : c.lastMessage), lastMessageAtUtc: lastMessage.createdAtUtc }
+          : c,
+      ),
+    );
+  }, [activeId, lastMessage]);
 
-  const filteredSellers = sellers.filter((seller) => {
-    const query = composeSearch.trim().toLowerCase();
-    if (!query) return true;
-    return seller.fullName.toLowerCase().includes(query) || seller.email.toLowerCase().includes(query);
-  });
+  if (!ready) return null;
 
-  const handleSend = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!activeId || (!message.trim() && !attachment)) return;
-    setSending(true);
-    try {
-      const sent = await sendAdminSupportMessage(activeId, message, attachment);
-      setMessages((current) => addUnique(current, sent));
-      playMessageSound("sent");
-      setMessage("");
-      setAttachment(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to send message.");
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const activeConversation = conversations.find((entry) => entry.id === activeId);
+  const hasMore = conversations.length < totalCount;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium text-slate-500">Inbox</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Conversations</h1>
-        </div>
-        <div className="relative">
-          <button
-            onClick={() => setComposeOpen((open) => !open)}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#f0563f] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#dc4b34]"
-          >
-            <Plus className="h-4 w-4" />
-            New chat
-          </button>
-          {composeOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setComposeOpen(false)} />
-              <div className="absolute right-0 z-20 mt-2 w-80 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
-                <div className="flex items-center justify-between gap-2 pb-2">
-                  <span className="text-sm font-medium text-slate-700">Start a chat</span>
-                  <button onClick={() => setComposeOpen(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="relative mb-2">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input
-                    autoFocus
-                    value={composeSearch}
-                    onChange={(e) => setComposeSearch(e.target.value)}
-                    placeholder="Search sellers"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-[#f0563f] focus:bg-white"
-                  />
-                </div>
-                <div className="max-h-72 space-y-1 overflow-y-auto">
-                  {filteredSellers.length === 0 ? (
-                    <div className="p-3 text-center text-sm text-slate-500">No sellers match.</div>
-                  ) : (
-                    filteredSellers.map((seller) => (
-                      <button
-                        key={seller.id}
-                        onClick={() => selectSeller(seller.id)}
-                        className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-50"
-                      >
-                        <div className="font-medium text-slate-800">{seller.fullName}</div>
-                        <div className="text-xs text-slate-500">{seller.email}</div>
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+      <div>
+        <p className="text-sm font-medium text-slate-500">Inbox</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Conversations</h1>
       </div>
 
-      {sellerNotice && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">{sellerNotice}</div>}
-      {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+      {listError && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{listError}</div>}
 
-      <div className="grid min-h-[640px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:grid-cols-[320px_1fr]">
-        <aside className="border-b border-slate-200 bg-slate-50 lg:border-b-0 lg:border-r">
-          <div className="border-b border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">Recent threads</div>
-          <div className="space-y-2 p-3">
-            {conversationsLoading ? (
-              <div className="p-3 text-sm text-slate-500">Loading…</div>
+      <div className="grid min-h-[640px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:grid-cols-[340px_1fr]">
+        <aside className={`flex-col border-b border-slate-200 bg-slate-50 lg:flex lg:border-b-0 lg:border-r ${activeId ? "hidden" : "flex"}`}>
+          <div className="border-b border-slate-200 p-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search sellers or shops"
+                aria-label="Search conversations"
+                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-[var(--brand)]"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-2 lg:max-h-[640px]">
+            {listLoading ? (
+              <div className="space-y-2 p-1" aria-hidden>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <div key={i} className="h-[74px] animate-pulse rounded-xl bg-slate-200/70" />
+                ))}
+              </div>
             ) : conversations.length === 0 ? (
-              <div className="p-3 text-sm text-slate-500">No conversations yet.</div>
+              <div className="p-4 text-center text-sm text-slate-500">
+                {search ? "No conversations match your search." : "No conversations yet. They appear here when a seller messages support."}
+              </div>
             ) : (
-              conversations.map((thread) => (
-                <button
-                  key={thread.id}
-                  onClick={() => openConversation(thread.id)}
-                  className={`w-full rounded-xl border p-3 text-left transition ${
-                    thread.id === activeId ? "border-[#f0563f] bg-white shadow-sm" : "border-transparent bg-transparent hover:bg-white"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="font-medium text-slate-800">{thread.sellerName}</div>
-                    {unreadIds.has(thread.id) && <span className="h-2 w-2 shrink-0 rounded-full bg-[#f0563f]" />}
-                  </div>
-                  <div className="text-xs text-slate-500">{thread.shopName}</div>
-                  <div className="mt-2 line-clamp-2 text-sm text-slate-600">{thread.lastMessage ?? "No messages yet"}</div>
-                  <div className="mt-1 text-xs text-slate-400">{new Date(thread.lastMessageAtUtc ?? thread.createdAtUtc).toLocaleString()}</div>
-                </button>
-              ))
+              <ul className="space-y-1">
+                {conversations.map((thread) => {
+                  const selected = thread.id === activeId;
+                  return (
+                    <li key={thread.id}>
+                      <button
+                        onClick={() => openConversation(thread.id)}
+                        aria-current={selected}
+                        className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition ${selected ? "border-[var(--brand)] bg-white shadow-sm" : "border-transparent hover:bg-white"}`}
+                      >
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand)]/10 text-sm font-semibold text-[var(--brand)]">
+                          {(thread.sellerName || thread.shopName).slice(0, 2).toUpperCase()}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center justify-between gap-2">
+                            <span className={`truncate text-sm ${thread.unreadCount ? "font-semibold text-slate-900" : "font-medium text-slate-800"}`}>{thread.sellerName}</span>
+                            <span className={`shrink-0 text-[11px] ${thread.unreadCount ? "font-semibold text-[var(--brand)]" : "text-slate-400"}`}>
+                              {formatListTime(thread.lastMessageAtUtc ?? thread.createdAtUtc)}
+                            </span>
+                          </span>
+                          <span className="block truncate text-xs text-slate-500">{thread.shopName}</span>
+                          <span className="mt-1 flex items-center justify-between gap-2">
+                            <span className={`flex min-w-0 items-center gap-1 text-sm ${thread.unreadCount ? "text-slate-700" : "text-slate-500"}`}>
+                              {thread.lastMessage ? <span className="truncate">{thread.lastMessage}</span> : <span className="italic text-slate-400">No messages yet</span>}
+                            </span>
+                            {thread.unreadCount > 0 && (
+                              <span className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-[var(--brand)] px-1.5 py-0.5 text-[11px] font-semibold text-white" aria-label={`${thread.unreadCount} unread`}>
+                                {thread.unreadCount > 99 ? "99+" : thread.unreadCount}
+                              </span>
+                            )}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {hasMore && !listLoading && (
+              <button onClick={loadMore} disabled={loadingMore} className="mt-2 w-full rounded-xl border border-slate-200 bg-white py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-60">
+                {loadingMore ? "Loading…" : `Load more (${totalCount - conversations.length} left)`}
+              </button>
             )}
           </div>
         </aside>
 
-        <section className="flex min-h-[500px] flex-col">
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                {activeConversation ? activeConversation.sellerName : "Select a conversation"}
-              </h2>
-              <p className="text-xs text-slate-500">{activeConversation?.shopName ?? "Seller"}</p>
+        <div className={`min-w-0 flex-col lg:flex ${activeId ? "flex" : "hidden"}`}>
+          {active ? (
+            <ChatThread
+              key={active.id}
+              thread={thread}
+              userId={userId}
+              title={active.sellerName}
+              subtitle={active.shopName}
+              online={sellerOnline}
+              onBack={() => setActiveId(null)}
+              emptyText="No messages yet. Send the first one below."
+            />
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center text-slate-500">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                <Search className="h-6 w-6" />
+              </span>
+              <div className="text-base font-medium text-slate-700">Select a conversation</div>
+              <p className="text-sm">Pick a seller from the list to read and reply to their messages.</p>
             </div>
-          </div>
-
-          <div ref={scrollRef} className="flex flex-1 flex-col gap-4 overflow-y-auto bg-[#fcfbfa] p-5">
-            {!activeId ? (
-              <div className="text-sm text-slate-500">Pick a conversation from the list to view messages.</div>
-            ) : messagesLoading ? (
-              <div className="text-sm text-slate-500">Loading messages…</div>
-            ) : messages.length === 0 ? (
-              <div className="text-sm text-slate-500">
-                {messagesUnavailable ? "Message history isn't available from the server right now — you can still send a new message below." : "No messages yet."}
-              </div>
-            ) : (
-              messages.map((item) => {
-                const mine = item.senderUserId === userId;
-                const status = item.readAtUtc || (readUntil && item.createdAtUtc <= readUntil)
-                  ? "read"
-                  : confirmedIds.has(item.id)
-                    ? "delivered"
-                    : "sent";
-                return (
-                  <div key={item.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm ${mine ? "bg-[#f0563f] text-white" : "bg-white text-slate-700 ring-1 ring-slate-200"}`}>
-                      <ChatAttachmentBubble item={item} mine={mine} />
-                      {item.message}
-                      <div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-white/80" : "text-slate-400"}`}>
-                        {new Date(item.createdAtUtc).toLocaleTimeString()}
-                        {mine && <MessageStatusTicks status={status} className={status === "read" ? "" : "text-white/80"} />}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          <form onSubmit={handleSend} className="border-t border-slate-200 p-4">
-            {attachment && (
-              <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-xs text-slate-700">
-                <span className="truncate">{attachment.name}</span>
-                <button type="button" onClick={() => { setAttachment(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} className="shrink-0 rounded p-0.5 hover:bg-slate-200">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            )}
-            <div className="flex gap-3">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,.pdf,.doc,.docx,.txt"
-                onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
-                disabled={!activeId}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={!activeId}
-                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Attach a file or image"
-              >
-                <Paperclip className="h-4 w-4" />
-              </button>
-              <input
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                disabled={!activeId}
-                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#f0563f] focus:bg-white"
-                placeholder={activeId ? "Type a message" : "Select a conversation first"}
-              />
-              <button type="submit" disabled={sending || !activeId} className="inline-flex items-center gap-2 rounded-xl bg-[#f0563f] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#dc4b34] disabled:opacity-60">
-                <SendHorizontal className="h-4 w-4" />
-                Send
-              </button>
-            </div>
-          </form>
-        </section>
+          )}
+        </div>
       </div>
     </div>
   );

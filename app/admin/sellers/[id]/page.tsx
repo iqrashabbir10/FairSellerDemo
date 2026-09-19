@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, ExternalLink, FileText, Mail, MapPin, Phone, ShieldCheck, Store } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileText, Mail, Phone, ShieldCheck, Store } from "lucide-react";
 import { SellerStatusConfirmModal } from "@/app/components/SellerStatusConfirmModal";
 import { Pagination } from "@/app/components/Pagination";
 import { ProductThumbnail } from "@/app/components/ProductThumbnail";
@@ -222,11 +222,6 @@ export default function SellerProfilePage() {
             <Card title="Shop & business" icon={<Store className="h-4 w-4 text-[#f0563f]" />}>
               <div className="space-y-2 text-sm text-slate-600">
                 <div className="font-medium text-slate-800">{seller.shopName} · {seller.shopCategory}</div>
-                {seller.shopDescription && <p>{seller.shopDescription}</p>}
-                <div className="flex items-start gap-2">
-                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  {[seller.address, seller.city, seller.country, seller.postalCode].filter(Boolean).join(", ")}
-                </div>
               </div>
             </Card>
 

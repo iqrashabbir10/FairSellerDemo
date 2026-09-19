@@ -42,6 +42,37 @@ export function resolveApiUrl(path?: string | null) {
   return new URL(path, BASE_URL).toString();
 }
 
+// Older backend builds serialised error bodies PascalCase ("Message"); lower-case the envelope keys so both work.
+function normalizePayload<T>(raw: unknown): ApiResponse<T> | null {
+  if (!raw || typeof raw !== "object") return null;
+  const body = raw as Record<string, unknown>;
+  return {
+    success: (body.success ?? body.Success) as boolean,
+    message: (body.message ?? body.Message ?? null) as string | null,
+    errors: ((body.errors ?? body.Errors) as string[] | undefined) ?? [],
+    data: (body.data ?? body.Data) as T,
+  };
+}
+
+function friendlyStatusMessage(status: number) {
+  switch (status) {
+    case 400:
+      return "That couldn't be completed. Please check your details and try again.";
+    case 401:
+      return "Your session has expired. Please sign in again.";
+    case 403:
+      return "You don't have permission to do that.";
+    case 404:
+    case 405:
+      return "We couldn't complete that right now. Please refresh the page and try again — if it keeps happening, contact support.";
+    case 408:
+    case 429:
+      return "Too many requests at once. Please wait a moment and try again.";
+    default:
+      return status >= 500 ? "Something went wrong on our side. Please try again in a moment." : "Something went wrong. Please try again.";
+  }
+}
+
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const { method = "GET", body, query, auth = true } = options;
 
@@ -76,13 +107,13 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
 
   let payload: ApiResponse<T> | null = null;
   try {
-    payload = await response.json();
+    payload = normalizePayload(await response.json());
   } catch {
     // No JSON body (e.g. empty 204 response).
   }
 
   if (!response.ok || !payload || payload.success === false) {
-    const message = payload?.message || `Request failed with status ${response.status}`;
+    const message = payload?.message || friendlyStatusMessage(response.status);
     // Session expired/invalid on an authenticated request — force back to login instead of
     // leaving the page stuck on a raw 401 error.
     if (response.status === 401 && auth) {

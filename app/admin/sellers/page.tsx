@@ -175,7 +175,6 @@ export default function SellersPage() {
 
                 <div className="space-y-2 text-sm text-slate-600">
                   <div className="flex justify-between gap-4"><span>Category</span><span className="font-medium text-slate-700">{seller.shopCategory || "—"}</span></div>
-                  <div className="flex justify-between gap-4"><span>Location</span><span className="font-medium text-slate-700">{[seller.city, seller.country].filter(Boolean).join(", ") || "—"}</span></div>
                   {hasStats && <div className="flex justify-between gap-4"><span>Revenue</span><span className="font-medium text-slate-700">${stat.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>}
                   {hasStats && <div className="flex justify-between gap-4"><span>Orders</span><span className="font-medium text-slate-700">{stat.orders}</span></div>}
                 </div>

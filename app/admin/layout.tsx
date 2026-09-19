@@ -1,9 +1,10 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ChartNoAxesCombined, CreditCard, House, KeyRound, Menu, MessageSquareText, Package, Settings, ShoppingBag, Tags, UserRound, Users, WalletCards, X, LogOut } from "lucide-react";
+import { CreditCard, House, KeyRound, Menu, MessageSquareText, Package, Settings, ShoppingBag, Tags, UserRound, Users, WalletCards, X, LogOut } from "lucide-react";
 import { clearSession } from "@/lib/api/session";
+import { keepSupportConnectionAlive, stopSupportConnection } from "@/lib/signalr/supportHub";
 import { logout } from "@/lib/api/auth";
 import { SidebarUser } from "@/app/components/SidebarUser";
 import { BackToTop } from "@/app/components/BackToTop";
@@ -14,7 +15,6 @@ const navigation = [
   { label: "Products", href: "/admin/products", icon: Package },
   { label: "Categories", href: "/admin/categories", icon: Tags },
   { label: "Sellers Products", href: "/admin/sellers-products", icon: ShoppingBag },
-  { label: "Product Storehouse", href: "/admin/storehouse", icon: ChartNoAxesCombined },
   { label: "Orders", href: "/admin/orders", icon: ShoppingBag },
   { label: "Money Withdraw", href: "/admin/withdrawals", icon: WalletCards },
   { label: "Conversations", href: "/admin/conversations", icon: MessageSquareText },
@@ -112,7 +112,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
 
+  // Staying connected to the chat hub while signed in is what makes this user show as "online" to the other side.
+  useEffect(() => keepSupportConnectionAlive(), []);
+
   const handleLogout = () => {
+    void stopSupportConnection();
     logout().catch(() => {});
     clearSession();
     router.push("/");

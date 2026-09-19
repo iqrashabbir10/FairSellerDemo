@@ -77,11 +77,6 @@ export interface SellerRegisterPayload {
   termsAccepted: boolean;
   shopName: string;
   shopCategory: string;
-  shopDescription: string;
-  address: string;
-  city: string;
-  country: string;
-  postalCode: string;
   idType: IdentityDocumentType;
   idNumber: string;
   identityDocument: File;
@@ -110,6 +105,17 @@ export interface SellerProfileDto {
   idType: IdentityDocumentType;
   idNumber: string;
   documentUrl: string | null;
+}
+
+// Only the phone number is seller-editable; name, shop name/category and ID are verified by admins.
+export interface UpdateSellerProfilePayload {
+  phoneNumber: string;
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }
 
 export interface SellerDashboardDto {
@@ -149,6 +155,14 @@ export interface SellerOrderDto {
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   createdAtUtc: string;
+  // What the seller pays from their wallet to pick this order (supplier cost x quantity).
+  pickCost: number;
+}
+
+export interface PickOrderResultDto {
+  order: SellerOrderDto;
+  balance: number;
+  currency: string;
 }
 
 export interface WalletDto {
@@ -164,6 +178,45 @@ export interface WalletTransactionDto {
   amount: number;
   previousBalance: number;
   newBalance: number;
+  createdAtUtc: string;
+  reason?: string | null;
+}
+
+// ---- Admin manual wallet credit ----
+
+export interface WalletSellerOptionDto {
+  sellerId: string;
+  sellerName: string;
+  shopName: string;
+  balance: number;
+  currency: string;
+}
+
+export interface AdminCreditWalletPayload {
+  amount: number;
+  note: string;
+  // Same id on a retry means the credit is applied at most once.
+  requestId: string;
+}
+
+export interface WalletCreditResultDto {
+  transactionId: string;
+  sellerId: string;
+  amount: number;
+  balance: number;
+  currency: string;
+  createdAtUtc: string;
+  alreadyApplied: boolean;
+}
+
+export interface AdminWalletCreditDto {
+  id: string;
+  sellerId: string;
+  sellerName: string;
+  shopName: string;
+  amount: number;
+  newBalance: number;
+  reason: string | null;
   createdAtUtc: string;
 }
 
@@ -188,17 +241,24 @@ export interface SupportConversationDto {
   createdAtUtc: string;
 }
 
-// Admin's GET /api/admin/support list only — already includes seller/shop names + last message
-// preview so the inbox doesn't need a separate per-seller lookup.
+// Admin's GET /api/admin/support list (paged, searchable) — already includes seller/shop names, a
+// last-message preview and the unread count, so the inbox needs no per-seller lookups.
 export interface SupportConversationSummaryDto {
   id: string;
   sellerId: string;
+  sellerUserId: string;
   sellerName: string;
   shopName: string;
   status: SupportStatus;
   createdAtUtc: string;
   lastMessageAtUtc: string | null;
   lastMessage: string | null;
+  unreadCount: number;
+}
+
+export interface SupportAttachmentDto {
+  id: string;
+  fileUrl: string;
 }
 
 export interface SupportMessageDto {
@@ -207,12 +267,10 @@ export interface SupportMessageDto {
   senderUserId: string;
   message: string;
   createdAtUtc: string;
-  // Optional — only present if the backend implements read receipts (see MarkAsRead endpoints).
+  // Set when the recipient was online at send time (or came online later). Read implies delivered.
+  deliveredAtUtc?: string | null;
   readAtUtc?: string | null;
-  // Optional — only present if the backend implements chat attachments (see repo memory notes).
-  attachmentUrl?: string | null;
-  attachmentType?: "Image" | "File" | null;
-  attachmentName?: string | null;
+  attachments?: SupportAttachmentDto[] | null;
 }
 
 export interface NotificationDto {

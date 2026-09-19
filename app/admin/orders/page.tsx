@@ -11,30 +11,19 @@ import { useAuthGuard } from "@/lib/api/useAuthGuard";
 
 const STATUSES: OrderStatus[] = [
   "Pending",
-  "PaymentRequired",
-  "PaymentVerification",
-  "Processing",
-  "ReadyToPick",
   "Picked",
   "OnTheWay",
-  "Delivered",
-  "Completed",
-  "Cancelled",
-  "Returned",
+  "Delivered"
 ];
+
+// Admins can only move an order to these two statuses; the other statuses stay visible and filterable.
+const ADMIN_SETTABLE: OrderStatus[] = ["OnTheWay", "Delivered"];
 
 const statusLabel = (status: string) => status.replace(/([a-z])([A-Z])/g, "$1 $2");
 
 const statusStyles: Record<string, { badge: string; dot: string }> = {
   Delivered: { badge: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" },
-  Completed: { badge: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" },
   Pending: { badge: "bg-amber-50 text-amber-700", dot: "bg-amber-500" },
-  PaymentRequired: { badge: "bg-amber-50 text-amber-700", dot: "bg-amber-500" },
-  PaymentVerification: { badge: "bg-amber-50 text-amber-700", dot: "bg-amber-500" },
-  Cancelled: { badge: "bg-red-50 text-red-700", dot: "bg-red-500" },
-  Returned: { badge: "bg-red-50 text-red-700", dot: "bg-red-500" },
-  Processing: { badge: "bg-blue-50 text-blue-700", dot: "bg-blue-500" },
-  ReadyToPick: { badge: "bg-blue-50 text-blue-700", dot: "bg-blue-500" },
   Picked: { badge: "bg-blue-50 text-blue-700", dot: "bg-blue-500" },
   OnTheWay: { badge: "bg-blue-50 text-blue-700", dot: "bg-blue-500" },
 };
@@ -392,13 +381,17 @@ export default function AdminOrdersPage() {
   // Picking a status only stages it; nothing is sent until the admin confirms in the dialog.
   const statusSelect = (invoice: Invoice, dark = false) => (
     <select
-      value={invoice.status === "Mixed" ? "" : invoice.status}
+      value={ADMIN_SETTABLE.includes(invoice.status as OrderStatus) ? invoice.status : ""}
       onChange={(e) => e.target.value && setPending({ invoiceKey: invoice.key, status: e.target.value as OrderStatus })}
       aria-label={`Change status of ${invoiceNumber(invoice)}`}
       className={`rounded-lg border px-2 py-1.5 text-xs font-medium outline-none focus:border-[#f0563f] ${dark ? "border-white/30 bg-white text-slate-700" : "border-slate-200 bg-white text-slate-700"}`}
     >
-      {invoice.status === "Mixed" && <option value="">Mixed – set all to…</option>}
-      {STATUSES.map((s) => (
+      {!ADMIN_SETTABLE.includes(invoice.status as OrderStatus) && (
+        <option value="" disabled>
+          {statusLabel(invoice.status)} – change to…
+        </option>
+      )}
+      {ADMIN_SETTABLE.map((s) => (
         <option key={s} value={s}>{statusLabel(s)}</option>
       ))}
     </select>

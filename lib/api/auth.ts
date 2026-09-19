@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import type { AuthResponse, LoginPayload, SellerRegisterPayload } from "./types";
+import type { AuthResponse, ChangePasswordPayload, LoginPayload, SellerRegisterPayload } from "./types";
 
 export function sellerRegister(payload: SellerRegisterPayload) {
   const formData = new FormData();
@@ -11,6 +11,11 @@ export function sellerRegister(payload: SellerRegisterPayload) {
     }
   }
   return apiFetch<AuthResponse>("/api/auth/seller/register", { method: "POST", body: formData, auth: false });
+}
+
+// One sign-in for everyone: the backend looks the account up and decides whether it is an admin or a seller.
+export function login(payload: LoginPayload) {
+  return apiFetch<AuthResponse>("/api/auth/login", { method: "POST", body: payload, auth: false });
 }
 
 export function sellerLogin(payload: LoginPayload) {
@@ -27,6 +32,10 @@ export function refreshToken(refreshTokenValue: string) {
     body: { refreshToken: refreshTokenValue },
     auth: false,
   });
+}
+
+export function changePassword(payload: ChangePasswordPayload) {
+  return apiFetch<null>("/api/auth/change-password", { method: "POST", body: payload });
 }
 
 export function logout() {

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet --version)",
+      "Bash(cd \"/d/Personal/Backend Service/WAYFEIR-DotNet10/src\" && cat WAYFEIR.Api/Hubs/ChatNotifier.cs WAYFEIR.Application/Interfaces/IChatNotifier.cs WAYFEIR.Application/Interfaces/ISupportService.cs; grep -n \"SupportMessage\\\\|SupportConversation\" WAYFEIR.Infrastructure/Persistence/AppDbContext.cs; cat WAYFEIR.Api/Controllers/Seller/SellerSupportController.cs | sed -n 1,80p; cat WAYFEIR.Domain/Common/BaseEntity.cs; dotnet ef --version 2>&1 | tail -2; ls ..; grep -rn \"class Roles\" -A6 WAYFEIR.Infrastructure/Authentication/*.cs | head -12; grep -rn \"GetUserId\" WAYFEIR.Api/Extensions/*.cs | head -3)",
+      "Read(//d/Personal/**)",
+      "Bash(node \"C:/Users/IQRA~1.SHA/AppData/Local/Temp/claude/d--Personal-FairSellerDemo/8be8be47-ecef-4fa7-b583-9e5e6cb4b1d6/scratchpad/edit-controllers.js\")",
+      "Read(//d/Personal/Backend Service/WAYFEIR-DotNet10/**)",
+      "Bash(node -e ' *)",
+      "Bash(node \"C:/Users/IQRA~1.SHA/AppData/Local/Temp/claude/d--Personal-FairSellerDemo/8be8be47-ecef-4fa7-b583-9e5e6cb4b1d6/scratchpad/edit-wallet-fe.js\")",
+      "Bash(node \"C:/Users/IQRA~1.SHA/AppData/Local/Temp/claude/d--Personal-FairSellerDemo/8be8be47-ecef-4fa7-b583-9e5e6cb4b1d6/scratchpad/edit-fe-login-pick.js\")"
+    ],
+    "additionalDirectories": [
+      "D:\\Personal\\Backend Service\\WAYFEIR-DotNet10\\src\\WAYFEIR.Infrastructure\\Services",
+      "D:\\Personal\\Backend Service\\WAYFEIR-DotNet10\\src\\WAYFEIR.Api\\Hubs"
+    ]
+  }
+}

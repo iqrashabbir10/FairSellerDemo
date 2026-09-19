@@ -2,14 +2,33 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Lock, ShieldCheck, Store } from "lucide-react";
-import { adminLogin, sellerLogin } from "@/lib/api/auth";
+import { ArrowRight, Lock } from "lucide-react";
+import { login } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
-import { getSession, setSession } from "@/lib/api/session";
+import { clearSession, getSession, setSession } from "@/lib/api/session";
+import { getSellerProfile } from "@/lib/api/seller";
+
+const PENDING_MESSAGES: Record<string, string> = {
+  Pending: "Your seller application is still being reviewed. You'll be able to sign in once an admin approves it.",
+  Rejected: "Your seller application wasn't approved. Please contact support for details.",
+  Frozen: "Your seller account is temporarily frozen. Please contact support.",
+};
+
+function friendlyLoginError(err: unknown) {
+  if (err instanceof ApiError) {
+    if (err.status === 0) return err.message; // network problem — already worded for the user
+    if (err.status === 400 || err.status === 401) {
+      // Lockout has its own wording from the server; everything else is a credentials problem.
+      return /too many/i.test(err.message) ? err.message : "Incorrect email or password. Please check your details and try again.";
+    }
+    if (err.status === 403) return "This account doesn't have access to sign in. Please contact support.";
+    if (err.status >= 500) return "Something went wrong on our side. Please try again in a moment.";
+  }
+  return "Unable to sign in. Please try again.";
+}
 
 export default function LoginPage() {
   const router = useRouter();
-  const [role, setRole] = useState<"admin" | "seller">("admin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -27,11 +46,26 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const auth = role === "admin" ? await adminLogin({ email, password }) : await sellerLogin({ email, password });
+      const auth = await login({ email: email.trim(), password });
       setSession(auth);
+
+      // A seller who hasn't been approved can't use the portal yet — explain why instead of dropping them on a broken dashboard.
+      if (auth.role === "Seller") {
+        try {
+          const profile = await getSellerProfile();
+          if (profile.status !== "Approved") {
+            clearSession();
+            setError(PENDING_MESSAGES[profile.status] ?? "Your seller account isn't active yet.");
+            return;
+          }
+        } catch {
+          // Couldn't check — let them in; the server still enforces access on every request.
+        }
+      }
+
       router.push(auth.role === "Admin" ? "/admin/dashboard" : "/seller/dashboard");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to sign in. Please try again.");
+      setError(friendlyLoginError(err));
     } finally {
       setLoading(false);
     }
@@ -51,7 +85,7 @@ export default function LoginPage() {
             Sell smarter, manage faster.
           </h1>
           <p className="mt-4 max-w-md text-base text-white/85">
-            Sign in as admin or seller to access your marketplace dashboard.
+            Sign in with your email and password to open your dashboard.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
@@ -74,35 +108,11 @@ export default function LoginPage() {
 
             <form onSubmit={submitLogin} className="space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Sign in as</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setRole("admin")}
-                    className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
-                      role === "admin" ? "border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    <ShieldCheck className="h-4 w-4" />
-                    Admin
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRole("seller")}
-                    className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
-                      role === "seller" ? "border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    <Store className="h-4 w-4" />
-                    Seller
-                  </button>
-                </div>
-              </div>
-
-              <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
                 <input
                   type="email"
+                  required
+                  autoComplete="username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white"
@@ -114,6 +124,8 @@ export default function LoginPage() {
                 <label className="mb-2 block text-sm font-medium text-slate-700">Password</label>
                 <input
                   type="password"
+                  required
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white"

@@ -1,8 +1,10 @@
 import { apiFetch, toPagedQuery } from "./client";
 import type {
+  AdminCreditWalletPayload,
   AdminDashboardDto,
   AdminOrderDto,
   AdminSellerDto,
+  AdminWalletCreditDto,
   AuditLogDto,
   CategoryDto,
   CreateInviteCodePayload,
@@ -21,7 +23,9 @@ import type {
   UpdateSellerStatusPayload,
   UpdateWithdrawalStatusPayload,
   VerifyPaymentPayload,
+  WalletCreditResultDto,
   WalletDto,
+  WalletSellerOptionDto,
   WalletTransactionDto,
   WithdrawalDto,
 } from "./types";
@@ -136,6 +140,21 @@ export function getAdminWallet(sellerId: string) {
   return apiFetch<WalletDto>(`/api/admin/wallet/${sellerId}`);
 }
 
+// Approved sellers with their wallet balance; `search` matches seller or shop name.
+export function searchWalletSellers(request?: PagedRequest & { search?: string }) {
+  return apiFetch<PagedResult<WalletSellerOptionDto>>("/api/admin/wallet/sellers", {
+    query: { ...toPagedQuery(request), search: request?.search },
+  });
+}
+
+export function creditSellerWallet(sellerId: string, payload: AdminCreditWalletPayload) {
+  return apiFetch<WalletCreditResultDto>(`/api/admin/wallet/${sellerId}/credit`, { method: "POST", body: payload });
+}
+
+export function getWalletCredits(request?: PagedRequest) {
+  return apiFetch<PagedResult<AdminWalletCreditDto>>("/api/admin/wallet/credits", { query: toPagedQuery(request) });
+}
+
 export function getAdminWalletTransactions(sellerId: string, request?: PagedRequest) {
   return apiFetch<PagedResult<WalletTransactionDto>>(`/api/admin/wallet/${sellerId}/transactions`, {
     query: toPagedQuery(request),
@@ -153,9 +172,11 @@ export function updateWithdrawalStatus(id: string, payload: UpdateWithdrawalStat
   });
 }
 
-// Plain array, not paginated — already sorted by most recent activity by the backend.
-export function getAdminSupportConversations() {
-  return apiFetch<SupportConversationSummaryDto[]>("/api/admin/support");
+// Paged and sorted by most recent activity by the backend; `search` matches seller/shop name.
+export function getAdminSupportConversations(request?: PagedRequest & { search?: string }) {
+  return apiFetch<PagedResult<SupportConversationSummaryDto>>("/api/admin/support", {
+    query: { ...toPagedQuery(request), search: request?.search },
+  });
 }
 
 export function getAdminSupportMessages(conversationId: string, request?: PagedRequest) {

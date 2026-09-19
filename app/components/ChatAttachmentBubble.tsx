@@ -1,32 +1,46 @@
-import { FileText } from "lucide-react";
+import { FileText, Loader2 } from "lucide-react";
 import { resolveApiUrl } from "@/lib/api/client";
-import type { SupportMessageDto } from "@/lib/api/types";
+import { attachmentDisplayName, formatBytes, isImageFile } from "@/lib/chat/attachments";
+import type { ChatMessage } from "@/lib/chat/useChatThread";
 
-// Renders a chat message's optional attachment — speculative until the backend adds attachment
-// support (see repo memory notes); simply renders nothing if the fields aren't populated.
-export function ChatAttachmentBubble({ item, mine }: { item: SupportMessageDto; mine: boolean }) {
-  if (!item.attachmentUrl) return null;
-  const url = resolveApiUrl(item.attachmentUrl);
-  if (!url) return null;
+// Renders a chat message's attachments: inline previews for images, a download chip for other files,
+// and an "uploading" chip while an optimistic message with a file is still in flight.
+export function ChatAttachmentBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
+  const chip = mine ? "bg-white/15 text-white" : "bg-slate-100 text-slate-700";
 
-  if (item.attachmentType === "Image") {
+  if (item.localFile) {
     return (
-      <a href={url} target="_blank" rel="noreferrer" className="mb-1 block overflow-hidden rounded-lg">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt={item.attachmentName ?? "Attachment"} className="max-h-56 w-full object-cover" />
-      </a>
+      <div className={`mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs ${chip}`}>
+        {item.localStatus === "sending" ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : <FileText className="h-3.5 w-3.5 shrink-0" />}
+        <span className="truncate">{item.localFile.name}</span>
+        <span className="shrink-0 opacity-70">{formatBytes(item.localFile.size)}</span>
+      </div>
     );
   }
 
+  if (!item.attachments?.length) return null;
+
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      className={`mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs ${mine ? "bg-white/15 text-white" : "bg-slate-100 text-slate-700"}`}
-    >
-      <FileText className="h-3.5 w-3.5 shrink-0" />
-      <span className="truncate">{item.attachmentName ?? "Download attachment"}</span>
-    </a>
+    <div className="space-y-1">
+      {item.attachments.map((attachment) => {
+        const url = resolveApiUrl(attachment.fileUrl);
+        if (!url) return null;
+        const name = attachmentDisplayName(attachment.fileUrl);
+        if (isImageFile(attachment.fileUrl)) {
+          return (
+            <a key={attachment.id} href={url} target="_blank" rel="noreferrer" className="mb-1 block overflow-hidden rounded-lg">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt={name} loading="lazy" className="max-h-56 w-full object-cover" />
+            </a>
+          );
+        }
+        return (
+          <a key={attachment.id} href={url} target="_blank" rel="noreferrer" className={`mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs ${chip}`}>
+            <FileText className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{name}</span>
+          </a>
+        );
+      })}
+    </div>
   );
 }

@@ -95,7 +95,7 @@ export default function SellerProductsPage() {
       ) : view === "grid" ? (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((product) => (
-            <ProductCard key={product.id} product={product} onClick={() => setDetailId(product.id)} footer={<div className="flex justify-end">{addButton(product)}</div>} />
+            <ProductCard key={product.id} product={product} showStatus={false} onClick={() => setDetailId(product.id)} footer={<div className="flex justify-end">{addButton(product)}</div>} />
           ))}
         </div>
       ) : (
@@ -108,7 +108,6 @@ export default function SellerProductsPage() {
                 <th className="px-4 py-3 font-medium">Category</th>
                 <th className="px-4 py-3 font-medium text-right">Base Price</th>
                 <th className="px-4 py-3 font-medium text-right">Seller Price</th>
-                <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium text-right">Actions</th>
               </tr>
             </thead>
@@ -122,12 +121,6 @@ export default function SellerProductsPage() {
                   <td className="px-4 py-3 text-slate-600">{product.categoryName}</td>
                   <td className="px-4 py-3 text-right text-slate-600">${product.supplierCost.toFixed(2)}</td>
                   <td className="px-4 py-3 text-right font-medium text-slate-800">${product.sellingPrice.toFixed(2)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${product.isAvailable ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${product.isAvailable ? "bg-emerald-500" : "bg-slate-400"}`} />
-                      {product.isAvailable ? "Available" : "Unavailable"}
-                    </span>
-                  </td>
                   <td className="px-4 py-3 text-right">{addButton(product)}</td>
                 </tr>
               ))}
