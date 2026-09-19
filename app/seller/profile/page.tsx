@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Info, Lock, LockKeyhole, Mail, Save, Store, UserRound } from "lucide-react";
+import { Info, Lock, LockKeyhole, Mail, Save, Star, Store, UserRound } from "lucide-react";
+import { SellerRatingCard, SellerRatingSummary } from "@/app/components/SellerRating";
 import { getSellerProfile, updateSellerProfile } from "@/lib/api/seller";
 import { ApiError } from "@/lib/api/client";
 import type { SellerProfileDto, SellerStatus } from "@/lib/api/types";
@@ -172,6 +173,7 @@ export default function SellerProfilePage() {
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="truncate text-xl font-semibold text-slate-900">{profile.fullName}</h2>
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${status.tone}`}>{profile.status}</span>
+                <SellerRatingSummary rating={profile.rating} creditScore={profile.creditScore} />
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
                 <span className="inline-flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{email}</span>
@@ -184,6 +186,10 @@ export default function SellerProfilePage() {
               {status.hint}
             </p>
           </section>
+
+          <Card icon={<Star className="h-4 w-4" />} title="Your rating & credit score" hint="Assigned by our team based on your account activity.">
+            <SellerRatingCard rating={profile.rating} creditScore={profile.creditScore} />
+          </Card>
 
           <div className="grid items-start gap-6 xl:grid-cols-[1.4fr_1fr]">
             <Card icon={<UserRound className="h-4 w-4" />} title="Contact & shop details" hint="Keep your phone number up to date so our team can reach you.">

@@ -9,6 +9,7 @@ import type { AdminSellerDto, SellerProductDto } from "@/lib/api/types";
 import { useAuthGuard } from "@/lib/api/useAuthGuard";
 import { ProductThumbnail } from "@/app/components/ProductThumbnail";
 import { Pagination } from "@/app/components/Pagination";
+import { SellerRatingSummary } from "@/app/components/SellerRating";
 
 type CartLine = SellerProductDto & { cartQuantity: number };
 
@@ -237,6 +238,7 @@ export default function SellersProductsPage() {
                     <span className="block truncate font-semibold text-slate-900">{seller.shopName || seller.fullName}</span>
                     <span className="block truncate text-sm text-slate-500">{seller.fullName}</span>
                     <span className="block truncate text-xs text-slate-400">{seller.email}</span>
+                    <SellerRatingSummary rating={seller.rating} creditScore={seller.creditScore} className="mt-1" />
                   </span>
                   <span className={`rounded-full px-2 py-1 text-xs font-medium ${statusStyles[seller.status] ?? "bg-slate-100 text-slate-600"}`}>{seller.status}</span>
                 </button>
@@ -258,6 +260,7 @@ export default function SellersProductsPage() {
                     {selectedSeller?.shopName || selectedSeller?.fullName}
                   </div>
                   <div className="text-sm text-slate-500">{selectedSeller?.email}</div>
+                  {selectedSeller && <SellerRatingSummary rating={selectedSeller.rating} creditScore={selectedSeller.creditScore} className="mt-1" />}
                 </div>
               </div>
               <button onClick={changeSeller} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">

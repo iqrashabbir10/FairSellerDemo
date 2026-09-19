@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Search, ShieldCheck } from "lucide-react";
+import { ArrowRight, Search, Share2, ShieldCheck } from "lucide-react";
 import { useResponsiveView, ViewToggle } from "@/app/components/ViewToggle";
 import { Pagination } from "@/app/components/Pagination";
+import { SellerRatingSummary } from "@/app/components/SellerRating";
+import { ShareSellerLinkDialog } from "@/app/components/ShareSellerLinkDialog";
 import { SELLER_STATUSES, SellerStatusConfirmModal } from "@/app/components/SellerStatusConfirmModal";
 import { getAdminOrders, getAdminSellers, updateSellerStatus } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
@@ -32,6 +34,7 @@ async function fetchAllOrders() {
 export default function SellersPage() {
   const ready = useAuthGuard("Admin");
   const [view, setView] = useResponsiveView();
+  const [shareOpen, setShareOpen] = useState(false);
   const [result, setResult] = useState<PagedResult<AdminSellerDto> | null>(null);
   const [stats, setStats] = useState<Record<string, { orders: number; revenue: number }>>({});
   const [statusFilter, setStatusFilter] = useState<SellerStatus | "All">("All");
@@ -126,6 +129,10 @@ export default function SellersPage() {
               placeholder="Search sellers"
             />
           </div>
+          <button onClick={() => setShareOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand)] px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-hover)]">
+            <Share2 className="h-4 w-4" />
+            Share seller link
+          </button>
           <ViewToggle value={view} onChange={setView} />
         </div>
       </div>
@@ -174,6 +181,7 @@ export default function SellersPage() {
                 </div>
 
                 <div className="space-y-2 text-sm text-slate-600">
+                  <div className="flex items-center justify-between gap-4"><span>Rating</span><SellerRatingSummary rating={seller.rating} creditScore={seller.creditScore} className="justify-end" /></div>
                   <div className="flex justify-between gap-4"><span>Category</span><span className="font-medium text-slate-700">{seller.shopCategory || "—"}</span></div>
                   {hasStats && <div className="flex justify-between gap-4"><span>Revenue</span><span className="font-medium text-slate-700">${stat.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>}
                   {hasStats && <div className="flex justify-between gap-4"><span>Orders</span><span className="font-medium text-slate-700">{stat.orders}</span></div>}
@@ -237,6 +245,8 @@ export default function SellersPage() {
           onConfirm={confirmStatus}
         />
       )}
+
+      {shareOpen && <ShareSellerLinkDialog onClose={() => setShareOpen(false)} />}
     </div>
   );
 }

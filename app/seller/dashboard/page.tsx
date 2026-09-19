@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CircleDollarSign, Package, ShoppingBag, TrendingUp, Wallet } from "lucide-react";
-import { getSellerDashboard, getSellerListings, getSellerOrders } from "@/lib/api/seller";
+import { getSellerDashboard, getSellerListings, getSellerOrders, getSellerProfile } from "@/lib/api/seller";
 import { ApiError } from "@/lib/api/client";
 import type { SellerDashboardDto, SellerOrderDto, SellerProductDto } from "@/lib/api/types";
 import { useAuthGuard } from "@/lib/api/useAuthGuard";
 import { ProductThumbnail } from "@/app/components/ProductThumbnail";
+import { SellerRatingHero } from "@/app/components/SellerRating";
 
 // A listing counts as "running low" when fewer than this many units are left.
 const LOW_QUANTITY = 5;
@@ -18,6 +19,7 @@ export default function SellerDashboardPage() {
   const [recentOrders, setRecentOrders] = useState<SellerOrderDto[]>([]);
   const [listings, setListings] = useState<SellerProductDto[]>([]);
   const [listingsError, setListingsError] = useState("");
+  const [reputation, setReputation] = useState<{ rating: number | null; creditScore: number | null; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -38,6 +40,13 @@ export default function SellerDashboardPage() {
       } finally {
         setLoading(false);
       }
+
+      // Rating loads on its own too; the hero simply stays hidden if the profile call fails.
+      getSellerProfile()
+        .then((profile) =>
+          setReputation({ rating: profile.rating ?? null, creditScore: profile.creditScore ?? null, name: profile.fullName.split(" ")[0] }),
+        )
+        .catch(() => {});
 
       // Listings load on their own so a problem here never blanks the rest of the dashboard.
       try {
@@ -62,6 +71,8 @@ export default function SellerDashboardPage() {
 
   return (
     <div className="space-y-8">
+      {reputation && <SellerRatingHero rating={reputation.rating} creditScore={reputation.creditScore} name={reputation.name} />}
+
       <div>
         <p className="text-sm font-medium text-slate-500">Seller overview</p>
         <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Dashboard</h1>

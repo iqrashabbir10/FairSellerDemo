@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { Suspense, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, CircleUserRound, Eye, EyeOff, FileText, ImageIcon, ShieldCheck, Store, UploadCloud, X } from "lucide-react";
 import { sellerRegister } from "@/lib/api/auth";
@@ -100,9 +101,9 @@ function stepForServerError(message: string) {
   return 2;
 }
 
-export default function SellerRegisterPage() {
+function SellerRegisterForm({ initialInvite }: { initialInvite: string }) {
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<FormState>(initialForm);
+  const [form, setForm] = useState<FormState>({ ...initialForm, inviteCode: initialInvite });
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<Errors>({});
@@ -449,5 +450,19 @@ export default function SellerRegisterPage() {
         )}
       </div>
     </main>
+  );
+}
+
+// An admin-shared link can carry ?invite=CODE so the seller doesn't have to type it.
+function RegisterWithInvite() {
+  const invite = useSearchParams().get("invite") ?? "";
+  return <SellerRegisterForm initialInvite={invite} />;
+}
+
+export default function SellerRegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterWithInvite />
+    </Suspense>
   );
 }

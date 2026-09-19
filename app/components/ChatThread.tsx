@@ -142,6 +142,18 @@ export function ChatThread({
 }) {
   const { messages, loading, loadingOlder, hasMore, error, connection, loadOlder, send, retry, discard, deleteMessage } = thread;
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const stickToBottom = useRef(true);
+  const prevSnapshot = useRef<{ first?: string; last?: string; height: number }>({ height: 0 });
+  const [unseenBelow, setUnseenBelow] = useState(0);
+
+  const [text, setText] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [composeError, setComposeError] = useState("");
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -173,18 +185,6 @@ export function ChatThread({
     if (problem) setComposeError(problem);
     if (replyTo?.id === confirmDeleteId) setReplyTo(null);
   };
-
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const stickToBottom = useRef(true);
-  const prevSnapshot = useRef<{ first?: string; last?: string; height: number }>({ height: 0 });
-  const [unseenBelow, setUnseenBelow] = useState(0);
-
-  const [text, setText] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [composeError, setComposeError] = useState("");
-  const [dragging, setDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = useCallback((smooth = false) => {
     const el = scrollRef.current;

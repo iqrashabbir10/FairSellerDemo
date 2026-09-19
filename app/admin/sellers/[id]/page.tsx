@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { AlertTriangle, ArrowLeft, Check, Copy, ExternalLink, FileText, KeyRound, Mail, Phone, ShieldCheck, Store } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Copy, ExternalLink, FileText, KeyRound, Mail, Phone, ShieldCheck, Star, Store } from "lucide-react";
 import { SellerStatusConfirmModal } from "@/app/components/SellerStatusConfirmModal";
+import { SellerRatingDialog, SellerRatingSummary } from "@/app/components/SellerRating";
 import { Pagination } from "@/app/components/Pagination";
 import { ProductThumbnail } from "@/app/components/ProductThumbnail";
-import { getAdminOrders, getAdminSeller, getSellerProducts, resetSellerPassword, updateSellerStatus } from "@/lib/api/admin";
+import { getAdminOrders, getAdminSeller, getSellerProducts, resetSellerPassword, updateSellerRating, updateSellerStatus } from "@/lib/api/admin";
 import { ApiError, resolveApiUrl } from "@/lib/api/client";
 import type { AdminOrderDto, AdminSellerDto, PagedResult, SellerProductDto, SellerStatus } from "@/lib/api/types";
 import { useAuthGuard } from "@/lib/api/useAuthGuard";
@@ -127,6 +128,9 @@ export default function SellerProfilePage() {
 
   const [pendingStatus, setPendingStatus] = useState<SellerStatus | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
+  const [ratingOpen, setRatingOpen] = useState(false);
+  const [ratingSaving, setRatingSaving] = useState(false);
+  const [ratingError, setRatingError] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
@@ -216,6 +220,22 @@ export default function SellerProfilePage() {
     }
   };
 
+  const saveRating = async (rating: number, creditScore: number) => {
+    if (!seller) return;
+    setRatingSaving(true);
+    setRatingError("");
+    try {
+      await updateSellerRating(seller.id, { rating, creditScore });
+      setSeller({ ...seller, rating, creditScore });
+      setNotice(`Rating updated: ${rating} star${rating === 1 ? "" : "s"}, credit score ${creditScore}.`);
+      setRatingOpen(false);
+    } catch (err) {
+      setRatingError(err instanceof ApiError ? err.errors[0] ?? err.message : "Failed to update the rating.");
+    } finally {
+      setRatingSaving(false);
+    }
+  };
+
   if (!ready) return null;
 
   const documentUrl = resolveApiUrl(seller?.documentUrl);
@@ -244,6 +264,19 @@ export default function SellerProfilePage() {
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
                   {seller.fullName}
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[seller.status] ?? "bg-slate-100 text-slate-600"}`}>{seller.status}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <SellerRatingSummary rating={seller.rating} creditScore={seller.creditScore} />
+                  <button
+                    onClick={() => {
+                      setRatingError("");
+                      setRatingOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    <Star className="h-3 w-3" />
+                    {seller.rating ? "Edit rating" : "Rate seller"}
+                  </button>
                 </div>
               </div>
             </div>
@@ -401,6 +434,18 @@ export default function SellerProfilePage() {
           </section>
 
           {resetOpen && <ResetPasswordDialog sellerId={seller.id} sellerName={seller.shopName || seller.fullName} onClose={() => setResetOpen(false)} />}
+
+          {ratingOpen && (
+            <SellerRatingDialog
+              sellerName={seller.shopName || seller.fullName}
+              initialRating={seller.rating}
+              initialCreditScore={seller.creditScore}
+              saving={ratingSaving}
+              error={ratingError}
+              onCancel={() => setRatingOpen(false)}
+              onSave={saveRating}
+            />
+          )}
 
           {pendingStatus && (
             <SellerStatusConfirmModal

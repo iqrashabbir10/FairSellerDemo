@@ -21,6 +21,7 @@ import type {
   SupportMessageDto,
   UpdateOrderStatusPayload,
   UpdateProductPayload,
+  UpdateSellerRatingPayload,
   UpdateSellerStatusPayload,
   UpdateWithdrawalStatusPayload,
   VerifyPaymentPayload,
@@ -49,6 +50,13 @@ export function getAdminSellers(request?: PagedRequest & { status?: SellerStatus
 
 export function getAdminSeller(id: string) {
   return apiFetch<AdminSellerDto>(`/api/admin/sellers/${id}`);
+}
+
+export function updateSellerRating(id: string, payload: UpdateSellerRatingPayload) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/admin/sellers/${id}/rating`, {
+    method: "PUT",
+    body: payload,
+  });
 }
 
 export function updateSellerStatus(id: string, payload: UpdateSellerStatusPayload) {

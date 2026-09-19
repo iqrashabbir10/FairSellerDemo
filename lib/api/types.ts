@@ -116,6 +116,9 @@ export interface SellerProfileDto {
   idType: IdentityDocumentType;
   idNumber: string;
   documentUrl: string | null;
+  // Admin-assigned; null until rated.
+  rating?: number | null;
+  creditScore?: number | null;
 }
 
 // Only the phone number is seller-editable; name, shop name/category and ID are verified by admins.
@@ -411,6 +414,13 @@ export interface AdminSellerDto {
   idNumber: string;
   documentType: IdentityDocumentType;
   documentUrl: string | null;
+  rating?: number | null;
+  creditScore?: number | null;
+}
+
+export interface UpdateSellerRatingPayload {
+  rating: number;
+  creditScore: number;
 }
 
 export interface UpdateSellerStatusPayload {
