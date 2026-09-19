@@ -151,7 +151,21 @@ export function getAdminSupportMessages(conversationId: string, request?: PagedR
   });
 }
 
-export function sendAdminSupportMessage(conversationId: string, message: string) {
+// Speculative — not in the original spec. Backend needs to add this route (see repo memory notes)
+// for real cross-device read receipts; harmless no-op if it 404s (caller swallows the error).
+export function markAdminSupportMessagesRead(conversationId: string) {
+  return apiFetch<{ success: boolean }>(`/api/admin/support/${conversationId}/messages/read`, { method: "POST" });
+}
+
+// `attachment` is speculative — see repo memory notes for the multipart contract the backend
+// needs to support; falls back to a plain JSON body when no file is attached.
+export function sendAdminSupportMessage(conversationId: string, message: string, attachment?: File | null) {
+  if (attachment) {
+    const formData = new FormData();
+    formData.append("message", message);
+    formData.append("attachment", attachment);
+    return apiFetch<SupportMessageDto>(`/api/admin/support/${conversationId}/messages`, { method: "POST", body: formData });
+  }
   return apiFetch<SupportMessageDto>(`/api/admin/support/${conversationId}/messages`, {
     method: "POST",
     body: { message },

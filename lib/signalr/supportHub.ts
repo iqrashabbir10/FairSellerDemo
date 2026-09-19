@@ -98,6 +98,19 @@ export function onConversationStarted(handler: (conversation: SupportConversatio
   };
 }
 
+// Speculative event — not in the original hub spec. Fires (if/when the backend adds it) whenever
+// the other party marks a conversation's messages as read; simply never fires otherwise.
+export function onMessagesRead(handler: (payload: { conversationId: string; readAtUtc: string }) => void) {
+  let disposed = false;
+  getSupportConnection().then((conn) => {
+    if (!disposed) conn.on("MessagesRead", handler);
+  });
+  return () => {
+    disposed = true;
+    connection?.off("MessagesRead", handler);
+  };
+}
+
 /** Fires after the connection recovers from a drop — group membership isn't preserved, so
  *  callers should re-fetch REST state (e.g. the conversation list) here. */
 export function onReconnected(handler: () => void) {

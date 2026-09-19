@@ -207,6 +207,12 @@ export interface SupportMessageDto {
   senderUserId: string;
   message: string;
   createdAtUtc: string;
+  // Optional — only present if the backend implements read receipts (see MarkAsRead endpoints).
+  readAtUtc?: string | null;
+  // Optional — only present if the backend implements chat attachments (see repo memory notes).
+  attachmentUrl?: string | null;
+  attachmentType?: "Image" | "File" | null;
+  attachmentName?: string | null;
 }
 
 export interface NotificationDto {
