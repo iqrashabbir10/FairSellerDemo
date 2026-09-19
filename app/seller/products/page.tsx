@@ -52,7 +52,7 @@ export default function SellerProductsPage() {
   if (!ready) return null;
 
   // The API has no search parameter, so search filters the current page.
-  const items = (result?.items ?? []).filter((item) => item.name.toLowerCase().includes(search.toLowerCase()));
+  const items = (result?.items ?? []).filter((item) => item.name.toLowerCase().includes(search.toLowerCase()) || item.sku?.toLowerCase().includes(search.toLowerCase()));
 
   const addButton = (product: ProductDto) => (
     <button
@@ -79,7 +79,7 @@ export default function SellerProductsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="relative max-w-md flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-[var(--brand)] focus:bg-white" placeholder="Search products" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-[var(--brand)] focus:bg-white" placeholder="Search by name or product code" />
           </div>
           <ViewToggle value={view} onChange={setView} />
         </div>
@@ -105,6 +105,7 @@ export default function SellerProductsPage() {
               <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
                 <th className="px-4 py-3 font-medium">Image</th>
                 <th className="px-4 py-3 font-medium">Product</th>
+                <th className="px-4 py-3 font-medium">Code</th>
                 <th className="px-4 py-3 font-medium">Category</th>
                 <th className="px-4 py-3 font-medium text-right">Base Price</th>
                 <th className="px-4 py-3 font-medium text-right">Seller Price</th>
@@ -118,6 +119,7 @@ export default function SellerProductsPage() {
                     <ProductThumbnail name={product.name} imageUrls={product.imageUrls} className="h-10 w-10" bare />
                   </td>
                   <td className="px-4 py-3 font-medium text-slate-800">{product.name}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-500">{product.sku || "—"}</td>
                   <td className="px-4 py-3 text-slate-600">{product.categoryName}</td>
                   <td className="px-4 py-3 text-right text-slate-600">${product.supplierCost.toFixed(2)}</td>
                   <td className="px-4 py-3 text-right font-medium text-slate-800">${product.sellingPrice.toFixed(2)}</td>

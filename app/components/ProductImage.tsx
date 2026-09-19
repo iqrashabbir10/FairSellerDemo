@@ -5,7 +5,7 @@ import { Package } from "lucide-react";
 // Backend ProductDto has no imageUrl yet, so render a deterministic placeholder
 // (stable gradient + initials) instead of a plain gray box.
 const PALETTES = [
-  ["#fde2dd", "#f0563f"],
+  ["#fde2dd", "var(--brand)"],
   ["#dbeeff", "#147d92"],
   ["#dcf3e6", "#2f8061"],
   ["#f2e2ec", "#8b4f70"],

@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Eye, PackageCheck, Search, Wallet, X } from "lucide-react";
+import { Check, CheckCircle2, Copy, Eye, PackageCheck, Search, Truck, Wallet, X, ClipboardList, BadgeDollarSign } from "lucide-react";
 import { useResponsiveView, ViewToggle } from "@/app/components/ViewToggle";
 import { ProductThumbnail } from "@/app/components/ProductThumbnail";
 import { getSellerOrders, getSellerWallet, pickSellerOrder } from "@/lib/api/seller";
 import { getSellerProductById } from "@/lib/api/sellerProducts";
 import { ApiError } from "@/lib/api/client";
-import type { OrderStatus, PaymentStatus, ProductDto, SellerOrderDto } from "@/lib/api/types";
+import type { OrderStatus, ProductDto, SellerOrderDto } from "@/lib/api/types";
 import { useAuthGuard } from "@/lib/api/useAuthGuard";
 
 const statusStyles: Record<OrderStatus, { dot: string; badge: string }> = {
@@ -25,25 +25,11 @@ const statusStyles: Record<OrderStatus, { dot: string; badge: string }> = {
   Returned: { dot: "bg-red-500", badge: "bg-red-50 text-red-700" },
 };
 
-const paymentStatusStyles: Record<PaymentStatus, string> = {
-  PendingVerification: "bg-amber-50 text-amber-700",
-  Verified: "bg-emerald-50 text-emerald-700",
-  Rejected: "bg-red-50 text-red-700",
-};
-
 function StatusBadge({ status }: { status: OrderStatus }) {
   const style = statusStyles[status] ?? { dot: "bg-slate-500", badge: "bg-slate-100 text-slate-700" };
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${style.badge}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-      {status}
-    </span>
-  );
-}
-
-function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
-  return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${paymentStatusStyles[status] ?? "bg-slate-100 text-slate-700"}`}>
       {status}
     </span>
   );
@@ -84,6 +70,169 @@ function PickAction({
           {currency.format(order.pickCost - balance)} to continue.
         </p>
       )}
+    </div>
+  );
+}
+
+// Where an order is in its journey. Anything outside this list (cancelled, returned…) just shows its badge.
+const JOURNEY: { status: OrderStatus; label: string; icon: typeof Check }[] = [
+  { status: "Pending", label: "Placed", icon: ClipboardList },
+  { status: "Picked", label: "Picked", icon: PackageCheck },
+  { status: "OnTheWay", label: "On the way", icon: Truck },
+  { status: "Delivered", label: "Delivered", icon: CheckCircle2 },
+];
+
+function journeyIndex(status: OrderStatus) {
+  if (status === "Completed") return JOURNEY.length - 1;
+  const index = JOURNEY.findIndex((step) => step.status === status);
+  return index === -1 ? (["ReadyToPick", "PaymentRequired", "PaymentVerification", "Processing"].includes(status) ? 0 : -1) : index;
+}
+
+function OrderJourney({ status }: { status: OrderStatus }) {
+  const current = journeyIndex(status);
+  if (current === -1) return null;
+  return (
+    <ol className="flex items-start" aria-label="Order progress">
+      {JOURNEY.map((step, index) => {
+        const done = index < current || (index === current && current === JOURNEY.length - 1);
+        const active = index === current && !done;
+        const Icon = step.icon;
+        return (
+          <li key={step.status} className="relative flex flex-1 flex-col items-center text-center">
+            {index > 0 && <span className={`absolute right-1/2 top-4 h-0.5 w-full ${index <= current ? "bg-emerald-400" : "bg-slate-200"}`} aria-hidden />}
+            <span
+              className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 bg-white ${
+                done ? "border-emerald-500 bg-emerald-500 text-white" : active ? "border-[var(--brand)] text-[var(--brand)] ring-4 ring-[var(--brand)]/15" : "border-slate-200 text-slate-300"
+              }`}
+            >
+              {done ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
+            </span>
+            <span className={`mt-2 text-xs font-medium ${done || active ? "text-slate-800" : "text-slate-400"}`}>{step.label}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function Stat({ label, value, tone = "default", icon }: { label: string; value: string; tone?: "default" | "brand" | "good"; icon?: React.ReactNode }) {
+  const styles = tone === "brand" ? "bg-[var(--brand)]/10 text-[var(--brand)]" : tone === "good" ? "bg-emerald-50 text-emerald-700" : "bg-slate-50 text-slate-800";
+  return (
+    <div className={`rounded-2xl px-4 py-3 ${styles}`}>
+      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide opacity-70">{icon}{label}</div>
+      <div className="mt-1 text-lg font-semibold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+function OrderDetailsDialog({
+  order,
+  product,
+  balance,
+  onClose,
+  onPick,
+}: {
+  order: SellerOrderDto;
+  product?: ProductDto;
+  balance: number | null;
+  onClose: () => void;
+  onPick: (order: SellerOrderDto) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const sku = order.productSku ?? product?.sku;
+  const total = order.sellingPrice * order.quantity;
+
+  // Escape closes; the page behind stays put while the dialog is open.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [onClose]);
+
+  const copyOrderNumber = async () => {
+    try {
+      await navigator.clipboard.writeText(order.orderNumber);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // clipboard blocked — the number is still visible to copy by hand
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-[2px] sm:items-center sm:p-4" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Order ${order.orderNumber}`}
+        className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:rounded-3xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        {/* header */}
+        <div className="relative bg-gradient-to-br from-[var(--brand)] to-[var(--brand-hover)] px-6 pb-6 pt-5 text-white">
+          <button onClick={onClose} className="absolute right-4 top-4 rounded-full bg-white/15 p-1.5 hover:bg-white/25" aria-label="Close">
+            <X className="h-4 w-4" />
+          </button>
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-white/75">Order</p>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <h2 className="break-all text-xl font-semibold tracking-tight">{order.orderNumber}</h2>
+            <button onClick={copyOrderNumber} className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-medium hover:bg-white/25" aria-label="Copy order number">
+              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-white/85">
+            <span className="rounded-full bg-white px-2.5 py-0.5"><StatusBadge status={order.status} /></span>
+            <span>Placed {dateTimeFormat.format(new Date(order.createdAtUtc))}</span>
+          </div>
+        </div>
+
+        {/* body */}
+        <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
+          <div className="flex items-center gap-4">
+            <ProductThumbnail name={product?.name ?? "Product"} imageUrls={product?.imageUrls} className="h-20 w-20 shrink-0" bare />
+            <div className="min-w-0">
+              <p className="line-clamp-2 text-base font-semibold text-slate-900">{product?.name ?? "Product"}</p>
+              {sku && <p className="mt-0.5 font-mono text-xs text-slate-500">Code: {sku}</p>}
+              <p className="mt-1 text-sm text-slate-500">
+                {order.quantity} × {currency.format(order.sellingPrice)}
+              </p>
+            </div>
+          </div>
+
+          <OrderJourney status={order.status} />
+
+          <div className="grid grid-cols-2 gap-3">
+            <Stat label="Order total" value={currency.format(total)} icon={<BadgeDollarSign className="h-3.5 w-3.5" />} />
+            <Stat label="Expected profit" value={currency.format(order.expectedProfit)} tone="good" />
+            <Stat label="Cost to pick" value={currency.format(order.pickCost)} tone="brand" icon={<Wallet className="h-3.5 w-3.5" />} />
+            <Stat label="Quantity" value={String(order.quantity)} />
+          </div>
+
+          <dl className="divide-y divide-slate-100 rounded-2xl border border-slate-200 text-sm">
+            <div className="flex justify-between gap-4 px-4 py-2.5"><dt className="text-slate-500">Quantity</dt><dd className="font-medium text-slate-800">{order.quantity}</dd></div>
+            <div className="flex justify-between gap-4 px-4 py-2.5"><dt className="text-slate-500">Price per unit</dt><dd className="font-medium text-slate-800">{currency.format(order.sellingPrice)}</dd></div>
+            <div className="flex justify-between gap-4 px-4 py-2.5"><dt className="text-slate-500">Order number</dt><dd className="break-all text-right font-mono text-sm font-medium text-slate-800">{order.orderNumber}</dd></div>
+          </dl>
+        </div>
+
+        {/* footer */}
+        <div className="border-t border-slate-100 bg-slate-50/70 px-6 py-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <PickAction order={order} balance={balance} onPick={onPick} />
+            </div>
+            <button onClick={onClose} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -138,7 +287,8 @@ export default function SellerOrdersPage() {
     if (!query) return orders;
     return orders.filter((order) => {
       const productName = products[order.productId]?.name ?? "";
-      return order.orderNumber.toLowerCase().includes(query) || productName.toLowerCase().includes(query);
+      const sku = order.productSku ?? products[order.productId]?.sku ?? "";
+      return order.orderNumber.toLowerCase().includes(query) || productName.toLowerCase().includes(query) || sku.toLowerCase().includes(query);
     });
   }, [orders, products, search]);
 
@@ -198,8 +348,8 @@ export default function SellerOrdersPage() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-[#f0563f] focus:bg-white"
-              placeholder="Search by order number or product"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-[var(--brand)] focus:bg-white"
+              placeholder="Search by order number, product or code"
             />
           </div>
           <ViewToggle value={view} onChange={setView} />
@@ -226,6 +376,7 @@ export default function SellerOrdersPage() {
                   <ProductThumbnail name={product?.name ?? "Product"} imageUrls={product?.imageUrls} className="h-14 w-14 shrink-0" bare />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-slate-800">{product?.name ?? order.productId}</p>
+                    {(order.productSku ?? product?.sku) && <p className="font-mono text-xs text-slate-400">{order.productSku ?? product?.sku}</p>}
                     <p className="text-xs text-slate-500">Qty: {order.quantity}</p>
                   </div>
                 </div>
@@ -243,10 +394,7 @@ export default function SellerOrdersPage() {
                   <span className="text-xs text-slate-500">Cost to pick</span>
                   <span className="font-medium text-slate-800">{currency.format(order.pickCost)}</span>
                 </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <PaymentStatusBadge status={order.paymentStatus} />
-                  <span className="text-xs text-slate-500">{dateTimeFormat.format(new Date(order.createdAtUtc))}</span>
-                </div>
+                <div className="mt-3 text-xs text-slate-500">{dateTimeFormat.format(new Date(order.createdAtUtc))}</div>
                 <PickAction order={order} balance={balance} onPick={(o) => { setPickError(""); setPickTarget(o); }} className="mt-4" />
                 <button
                   onClick={() => setSelectedOrder(order)}
@@ -272,7 +420,6 @@ export default function SellerOrdersPage() {
                   <th className="px-4 py-3 font-medium text-right">Expected Profit</th>
                   <th className="px-4 py-3 font-medium text-right">Cost to pick</th>
                   <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Payment</th>
                   <th className="px-4 py-3 font-medium">Created</th>
                   <th className="px-4 py-3 font-medium text-right">Actions</th>
                 </tr>
@@ -286,7 +433,10 @@ export default function SellerOrdersPage() {
                       <td className="px-4 py-3 text-slate-700">
                         <div className="flex items-center gap-2">
                           <ProductThumbnail name={product?.name ?? "Product"} imageUrls={product?.imageUrls} className="h-8 w-8" bare />
-                          <span className="truncate">{product?.name ?? order.productId}</span>
+                          <span className="min-w-0">
+                            <span className="block truncate">{product?.name ?? order.productId}</span>
+                            {(order.productSku ?? product?.sku) && <span className="block font-mono text-xs text-slate-400">{order.productSku ?? product?.sku}</span>}
+                          </span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right text-slate-600">{order.quantity}</td>
@@ -294,7 +444,6 @@ export default function SellerOrdersPage() {
                       <td className="px-4 py-3 text-right font-medium text-slate-800">{currency.format(order.expectedProfit)}</td>
                       <td className="px-4 py-3 text-right font-medium text-slate-800">{currency.format(order.pickCost)}</td>
                       <td className="px-4 py-3"><StatusBadge status={order.status} /></td>
-                      <td className="px-4 py-3"><PaymentStatusBadge status={order.paymentStatus} /></td>
                       <td className="px-4 py-3 text-slate-600">{dateTimeFormat.format(new Date(order.createdAtUtc))}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex flex-col items-end gap-1.5">
@@ -318,72 +467,16 @@ export default function SellerOrdersPage() {
       )}
 
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setSelectedOrder(null)}>
-          <div
-            className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">Order details</p>
-                <h2 className="text-lg font-semibold text-slate-900">{selectedOrder.orderNumber}</h2>
-              </div>
-              <button onClick={() => setSelectedOrder(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mt-4 flex items-center gap-3">
-              <ProductThumbnail
-                name={products[selectedOrder.productId]?.name ?? "Product"}
-                imageUrls={products[selectedOrder.productId]?.imageUrls}
-                className="h-16 w-16 shrink-0"
-                bare
-              />
-              <div className="min-w-0">
-                <p className="truncate font-medium text-slate-800">{products[selectedOrder.productId]?.name ?? selectedOrder.productId}</p>
-                <p className="text-xs text-slate-500">Product ID: {selectedOrder.productId}</p>
-              </div>
-            </div>
-
-            <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <dt className="text-xs text-slate-500">Order ID</dt>
-                <dd className="mt-0.5 break-all font-medium text-slate-800">{selectedOrder.id}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">Quantity</dt>
-                <dd className="mt-0.5 font-medium text-slate-800">{selectedOrder.quantity}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">Selling Price</dt>
-                <dd className="mt-0.5 font-medium text-slate-800">{currency.format(selectedOrder.sellingPrice)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">Expected Profit</dt>
-                <dd className="mt-0.5 font-medium text-slate-800">{currency.format(selectedOrder.expectedProfit)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">Cost to pick</dt>
-                <dd className="mt-0.5 font-medium text-slate-800">{currency.format(selectedOrder.pickCost)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">Order Status</dt>
-                <dd className="mt-1"><StatusBadge status={selectedOrder.status} /></dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">Payment Status</dt>
-                <dd className="mt-1"><PaymentStatusBadge status={selectedOrder.paymentStatus} /></dd>
-              </div>
-              <div className="col-span-2">
-                <dt className="text-xs text-slate-500">Created At</dt>
-                <dd className="mt-0.5 font-medium text-slate-800">{dateTimeFormat.format(new Date(selectedOrder.createdAtUtc))}</dd>
-              </div>
-            </dl>
-
-            <PickAction order={selectedOrder} balance={balance} onPick={(o) => { setPickError(""); setPickTarget(o); }} className="mt-5" />
-          </div>
-        </div>
+        <OrderDetailsDialog
+          order={selectedOrder}
+          product={products[selectedOrder.productId]}
+          balance={balance}
+          onClose={() => setSelectedOrder(null)}
+          onPick={(o) => {
+            setPickError("");
+            setPickTarget(o);
+          }}
+        />
       )}
 
       {pickTarget && (

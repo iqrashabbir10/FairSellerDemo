@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, ExternalLink, FileText, Mail, Phone, ShieldCheck, Store } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Copy, ExternalLink, FileText, KeyRound, Mail, Phone, ShieldCheck, Store } from "lucide-react";
 import { SellerStatusConfirmModal } from "@/app/components/SellerStatusConfirmModal";
 import { Pagination } from "@/app/components/Pagination";
 import { ProductThumbnail } from "@/app/components/ProductThumbnail";
-import { getAdminOrders, getAdminSeller, getSellerProducts, updateSellerStatus } from "@/lib/api/admin";
+import { getAdminOrders, getAdminSeller, getSellerProducts, resetSellerPassword, updateSellerStatus } from "@/lib/api/admin";
 import { ApiError, resolveApiUrl } from "@/lib/api/client";
 import type { AdminOrderDto, AdminSellerDto, PagedResult, SellerProductDto, SellerStatus } from "@/lib/api/types";
 import { useAuthGuard } from "@/lib/api/useAuthGuard";
@@ -35,6 +35,79 @@ function Card({ title, icon, children }: { title: string; icon?: React.ReactNode
   );
 }
 
+// Confirm, then reveal the one-time temporary password for the admin to pass on to the seller.
+function ResetPasswordDialog({ sellerId, sellerName, onClose }: { sellerId: string; sellerName: string; onClose: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [password, setPassword] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const confirm = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await resetSellerPassword(sellerId);
+      setPassword(result.temporaryPassword);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.errors[0] ?? err.message : "We couldn't reset the password. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copy = async () => {
+    if (!password) return;
+    try {
+      await navigator.clipboard.writeText(password);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Clipboard blocked — the password is still on screen to copy by hand.
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={busy || password ? undefined : onClose}>
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl" onClick={(event) => event.stopPropagation()}>
+        {password === null ? (
+          <>
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600"><KeyRound className="h-5 w-5" /></div>
+            <h2 className="mt-4 text-lg font-semibold text-slate-900">Reset {sellerName}&apos;s password?</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              This creates a temporary password and immediately replaces their current one. They&apos;ll be asked to choose a new password the next time they sign in.
+            </p>
+            {error && <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{error}</div>}
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={onClose} disabled={busy} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">Cancel</button>
+              <button onClick={confirm} disabled={busy} className="rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-hover)] disabled:opacity-60">{busy ? "Resetting…" : "Reset password"}</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600"><Check className="h-5 w-5" /></div>
+            <h2 className="mt-4 text-lg font-semibold text-slate-900">Password reset</h2>
+            <p className="mt-2 text-sm text-slate-600">Send this temporary password to {sellerName}. They&apos;ll be asked to set their own when they sign in with it.</p>
+            <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <code className="select-all break-all font-mono text-lg font-semibold tracking-wide text-slate-900">{password}</code>
+              <button onClick={copy} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+            <p className="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              This is shown only once. Share it privately (not in a public chat) — if you lose it, just reset the password again.
+            </p>
+            <div className="mt-5 flex justify-end">
+              <button onClick={onClose} className="rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-hover)]">Done</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SellerProfilePage() {
   const ready = useAuthGuard("Admin");
   const { id } = useParams<{ id: string }>();
@@ -53,6 +126,7 @@ export default function SellerProfilePage() {
   const [pageSize, setPageSize] = useState(10);
 
   const [pendingStatus, setPendingStatus] = useState<SellerStatus | null>(null);
+  const [resetOpen, setResetOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
@@ -162,7 +236,7 @@ export default function SellerProfilePage() {
         <>
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#f0563f]/10 text-lg font-semibold text-[#f0563f]">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand)]/10 text-lg font-semibold text-[var(--brand)]">
                 {(seller.shopName || seller.fullName).slice(0, 2).toUpperCase()}
               </div>
               <div>
@@ -173,6 +247,11 @@ export default function SellerProfilePage() {
                 </div>
               </div>
             </div>
+            <div className="flex flex-wrap items-center gap-3">
+            <button onClick={() => setResetOpen(true)} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <KeyRound className="h-4 w-4" />
+              Reset password
+            </button>
             <label className="flex items-center gap-2 text-sm text-slate-600">
               Status
               <select
@@ -184,13 +263,14 @@ export default function SellerProfilePage() {
                     setPendingStatus(next);
                   }
                 }}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:border-[#f0563f]"
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:border-[var(--brand)]"
               >
                 {STATUSES.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </label>
+            </div>
           </div>
 
           {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{notice}</div>}
@@ -209,7 +289,7 @@ export default function SellerProfilePage() {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card title="Contact & account" icon={<ShieldCheck className="h-4 w-4 text-[#f0563f]" />}>
+            <Card title="Contact & account" icon={<ShieldCheck className="h-4 w-4 text-[var(--brand)]" />}>
               <div className="space-y-2 text-sm text-slate-600">
                 <div className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-slate-400" /> {seller.email}</div>
                 <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-slate-400" /> {seller.phoneNumber}</div>
@@ -219,19 +299,19 @@ export default function SellerProfilePage() {
               </div>
             </Card>
 
-            <Card title="Shop & business" icon={<Store className="h-4 w-4 text-[#f0563f]" />}>
+            <Card title="Shop & business" icon={<Store className="h-4 w-4 text-[var(--brand)]" />}>
               <div className="space-y-2 text-sm text-slate-600">
                 <div className="font-medium text-slate-800">{seller.shopName} · {seller.shopCategory}</div>
               </div>
             </Card>
 
-            <Card title="Identity document" icon={<FileText className="h-4 w-4 text-[#f0563f]" />}>
+            <Card title="Identity document" icon={<FileText className="h-4 w-4 text-[var(--brand)]" />}>
               {documentUrl ? (
                 <div className="space-y-2 text-sm text-slate-600">
                   <div>Type: {seller.documentType ?? seller.idType}</div>
                   <div>ID number: {seller.idNumber}</div>
                   {isPdf ? (
-                    <a href={documentUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#f0563f] hover:underline">
+                    <a href={documentUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[var(--brand)] hover:underline">
                       View document <ExternalLink className="h-3.5 w-3.5" />
                     </a>
                   ) : (
@@ -279,11 +359,12 @@ export default function SellerProfilePage() {
               <>
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[600px] text-left text-sm">
+                    <table className="w-full min-w-[700px] text-left text-sm">
                       <thead>
                         <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
                           <th className="px-4 py-3 font-medium">Image</th>
                           <th className="px-4 py-3 font-medium">Product</th>
+                          <th className="px-4 py-3 font-medium">Code</th>
                           <th className="px-4 py-3 font-medium text-right">Base Price</th>
                           <th className="px-4 py-3 font-medium text-right">Seller Price</th>
                           <th className="px-4 py-3 font-medium text-right">Qty listed</th>
@@ -294,6 +375,7 @@ export default function SellerProfilePage() {
                           <tr key={product.id} className="border-b border-slate-200 last:border-b-0">
                             <td className="px-4 py-3"><ProductThumbnail name={product.productName} imageUrls={product.imageUrls} className="h-10 w-10" bare /></td>
                             <td className="px-4 py-3 font-medium text-slate-800">{product.productName}</td>
+                            <td className="px-4 py-3 font-mono text-xs text-slate-500">{product.sku || "—"}</td>
                             <td className="px-4 py-3 text-right text-slate-600">${product.supplierCost.toFixed(2)}</td>
                             <td className="px-4 py-3 text-right font-medium text-slate-800">${product.sellingPrice.toFixed(2)}</td>
                             <td className="px-4 py-3 text-right text-slate-600">{product.quantity}</td>
@@ -317,6 +399,8 @@ export default function SellerProfilePage() {
               </>
             )}
           </section>
+
+          {resetOpen && <ResetPasswordDialog sellerId={seller.id} sellerName={seller.shopName || seller.fullName} onClose={() => setResetOpen(false)} />}
 
           {pendingStatus && (
             <SellerStatusConfirmModal

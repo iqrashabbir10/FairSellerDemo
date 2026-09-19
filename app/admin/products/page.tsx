@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { CheckCircle2, Plus, Search } from "lucide-react";
 import { useResponsiveView, ViewToggle } from "@/app/components/ViewToggle";
 import { Pagination } from "@/app/components/Pagination";
 import { ProductCard } from "@/app/components/ProductCard";
 import { ProductThumbnail } from "@/app/components/ProductThumbnail";
 import { ProductFormModal } from "@/app/components/ProductFormModal";
-import { deleteAdminProduct, getAdminCategories, getAdminProducts } from "@/lib/api/admin";
+import { getAdminCategories, getAdminProducts } from "@/lib/api/admin";
+import { DeleteProductDialog } from "@/app/components/DeleteProductDialog";
 import { ApiError } from "@/lib/api/client";
 import type { CategoryDto, PagedResult, ProductDto } from "@/lib/api/types";
 import { useAuthGuard } from "@/lib/api/useAuthGuard";
@@ -28,6 +29,8 @@ export default function AdminProductsPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<ProductDto | undefined>();
+  const [deleting, setDeleting] = useState<ProductDto | null>(null);
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     if (!ready) return;
@@ -56,16 +59,12 @@ export default function AdminProductsPage() {
 
   const reload = useCallback(() => setReloadKey((key) => key + 1), []);
 
-  const handleDelete = async (product: ProductDto) => {
-    if (!window.confirm(`Delete "${product.name}"?`)) return;
-    try {
-      await deleteAdminProduct(product.id);
-      // Step back a page if that was the last item on this one.
-      if (result && result.items.length === 1 && page > 1) setPage(page - 1);
-      else reload();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to delete product.");
-    }
+  const afterDelete = (product: ProductDto) => {
+    setDeleting(null);
+    setNotice(`"${product.name}" was deleted.`);
+    // Step back a page if that was the last item on this one.
+    if (result && result.items.length === 1 && page > 1) setPage(page - 1);
+    else reload();
   };
 
   const openForm = (product?: ProductDto) => {
@@ -78,13 +77,13 @@ export default function AdminProductsPage() {
   // The API has no search/filter parameters, so these narrow the current page only.
   const items = (result?.items ?? []).filter(
     (product) =>
-      product.name.toLowerCase().includes(search.toLowerCase()) && (!categoryId || product.categoryId === categoryId),
+      (product.name.toLowerCase().includes(search.toLowerCase()) || product.sku?.toLowerCase().includes(search.toLowerCase())) && (!categoryId || product.categoryId === categoryId),
   );
 
   const actions = (product: ProductDto) => (
     <div className="flex justify-end gap-2">
       <button onClick={() => openForm(product)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">Edit</button>
-      <button onClick={() => handleDelete(product)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">Delete</button>
+      <button onClick={() => setDeleting(product)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">Delete</button>
     </div>
   );
 
@@ -95,7 +94,7 @@ export default function AdminProductsPage() {
           <p className="text-sm font-medium text-slate-500">Catalog overview</p>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Products</h1>
         </div>
-        <button onClick={() => openForm()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#f0563f] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#dc4b34]">
+        <button onClick={() => openForm()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand-hover)]">
           <Plus className="h-4 w-4" />
           Add Product
         </button>
@@ -108,8 +107,8 @@ export default function AdminProductsPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[#f0563f] focus:bg-white"
-              placeholder="Search products"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[var(--brand)] focus:bg-white"
+              placeholder="Search by name or product code"
             />
           </div>
 
@@ -125,6 +124,12 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
+      {notice && (
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700" role="status">
+          <span className="inline-flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{notice}</span>
+          <button onClick={() => setNotice("")} className="text-emerald-700/70 hover:text-emerald-800" aria-label="Dismiss">×</button>
+        </div>
+      )}
       {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
       {loading ? (
@@ -145,6 +150,7 @@ export default function AdminProductsPage() {
                 <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
                   <th className="px-4 py-3 font-medium">Image</th>
                   <th className="px-4 py-3 font-medium">Name</th>
+                  <th className="px-4 py-3 font-medium">Code</th>
                   <th className="px-4 py-3 font-medium">Category</th>
                   <th className="px-4 py-3 font-medium text-right">Base Price</th>
                   <th className="px-4 py-3 font-medium text-right">Seller Price</th>
@@ -156,6 +162,7 @@ export default function AdminProductsPage() {
                   <tr key={product.id} className="border-b border-slate-200 last:border-b-0">
                     <td className="px-4 py-3"><ProductThumbnail name={product.name} imageUrls={product.imageUrls} className="h-12 w-12" bare /></td>
                     <td className="px-4 py-3 font-medium text-slate-800">{product.name}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-500">{product.sku || "—"}</td>
                     <td className="px-4 py-3 text-slate-600">{product.categoryName}</td>
                     <td className="px-4 py-3 text-right text-slate-600">${product.supplierCost.toFixed(2)}</td>
                     <td className="px-4 py-3 text-right font-medium text-slate-800">${product.sellingPrice.toFixed(2)}</td>
@@ -177,12 +184,16 @@ export default function AdminProductsPage() {
           product={editing}
           categories={categories}
           onClose={() => setFormOpen(false)}
-          onSaved={() => {
+          onSaved={(saved, mode) => {
             setFormOpen(false);
+            setNotice(`"${saved.name}" was ${mode === "created" ? "added" : "updated"}.`);
+            if (mode === "created") setPage(1);
             reload();
           }}
         />
       )}
+
+      {deleting && <DeleteProductDialog product={deleting} onClose={() => setDeleting(null)} onDeleted={afterDelete} />}
     </div>
   );
 }

@@ -1,56 +1,79 @@
 "use client";
 
-import { Palette } from "lucide-react";
-import { useEffect, useState } from "react";
-
-const themes = [
-  { name: "Coral", value: "#f0563f", hover: "#dc4b34" },
-  { name: "Ocean", value: "#147d92", hover: "#0f6678" },
-  { name: "Forest", value: "#2f8061", hover: "#25664d" },
-  { name: "Plum", value: "#8b4f70", hover: "#713f5b" },
-];
+import { Check, Palette } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { THEMES, THEME_STORAGE_KEY, applyTheme, savedTheme, type Theme } from "@/lib/themes";
 
 export function ThemePicker() {
   const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState<Theme>(THEMES[0]);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const saved = themes.find((theme) => theme.value === localStorage.getItem("wayfeir-theme"));
-    if (saved) {
-      document.documentElement.style.setProperty("--brand", saved.value);
-      document.documentElement.style.setProperty("--brand-hover", saved.hover);
-    }
+    const theme = savedTheme();
+    setCurrent(theme);
+    applyTheme(theme);
   }, []);
 
-  const selectTheme = (theme: (typeof themes)[number]) => {
-    document.documentElement.style.setProperty("--brand", theme.value);
-    document.documentElement.style.setProperty("--brand-hover", theme.hover);
-    localStorage.setItem("wayfeir-theme", theme.value);
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const selectTheme = (theme: Theme) => {
+    applyTheme(theme);
+    setCurrent(theme);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme.value);
+    } catch {
+      // storage blocked — the colour still applies for this session
+    }
     setOpen(false);
   };
 
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => setOpen((value) => !value)}
         aria-label="Change theme color"
         aria-expanded={open}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/30 bg-white/10 transition hover:bg-white/20"
+        title="Theme color"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/30 bg-white/10 transition hover:bg-white/20"
       >
         <Palette className="h-4 w-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-11 z-50 flex gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
-          {themes.map((theme) => (
-            <button
-              key={theme.name}
-              type="button"
-              onClick={() => selectTheme(theme)}
-              aria-label={`${theme.name} theme`}
-              className="h-7 w-7 rounded-full border-2 border-white shadow ring-1 ring-slate-200 transition hover:scale-110"
-              style={{ backgroundColor: theme.value }}
-            />
-          ))}
+        <div className="absolute right-0 top-12 z-50 w-56 rounded-2xl border border-slate-200 bg-white p-3 text-slate-800 shadow-xl">
+          <div className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-slate-400">Theme color</div>
+          <div className="grid grid-cols-1 gap-1">
+            {THEMES.map((theme) => {
+              const active = theme.value === current.value;
+              return (
+                <button
+                  key={theme.name}
+                  type="button"
+                  onClick={() => selectTheme(theme)}
+                  aria-pressed={active}
+                  className={`flex items-center gap-3 rounded-xl px-2.5 py-2 text-left text-sm transition hover:bg-slate-50 ${active ? "bg-slate-50 font-semibold" : ""}`}
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full text-white shadow ring-1 ring-slate-200" style={{ backgroundColor: theme.value }}>
+                    {active && <Check className="h-4 w-4" />}
+                  </span>
+                  {theme.name}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

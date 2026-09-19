@@ -73,14 +73,14 @@ export default function AdminPaymentsPage() {
                     <td className="px-4 py-3 font-medium text-slate-800">{payment.orderId}</td>
                     <td className="px-4 py-3 text-right font-medium text-slate-800">${payment.amount.toFixed(2)}</td>
                     <td className="px-4 py-3">
-                      <a href={payment.fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#f0563f] hover:underline">
+                      <a href={payment.fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[var(--brand)] hover:underline">
                         View receipt <ExternalLink className="h-3.5 w-3.5" />
                       </a>
                     </td>
                     <td className="px-4 py-3 text-slate-600">{new Date(payment.submittedAtUtc).toLocaleString()}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => handleVerify(payment.id, true)} className="inline-flex items-center gap-1 rounded-lg bg-[#f0563f] px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-[#dc4b34]">
+                        <button onClick={() => handleVerify(payment.id, true)} className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand)] px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-[var(--brand-hover)]">
                           <Check className="h-3.5 w-3.5" />
                           Approve
                         </button>

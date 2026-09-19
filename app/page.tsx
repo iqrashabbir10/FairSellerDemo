@@ -36,6 +36,10 @@ export default function LoginPage() {
 
   useEffect(() => {
     const session = getSession();
+    if (session?.mustChangePassword) {
+      router.push("/auth/set-password");
+      return;
+    }
     if (session?.role === "Admin") router.push("/admin/dashboard");
     if (session?.role === "Seller") router.push("/seller/dashboard");
   }, [router]);
@@ -48,6 +52,12 @@ export default function LoginPage() {
     try {
       const auth = await login({ email: email.trim(), password });
       setSession(auth);
+
+      // An admin reset this account's password: they must choose a new one before anything else.
+      if (auth.mustChangePassword) {
+        router.push("/auth/set-password");
+        return;
+      }
 
       // A seller who hasn't been approved can't use the portal yet — explain why instead of dropping them on a broken dashboard.
       if (auth.role === "Seller") {

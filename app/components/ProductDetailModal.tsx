@@ -53,6 +53,10 @@ export function ProductDetailModal({ productId, onClose }: { productId: string; 
               <div className="font-semibold text-slate-900">{product.name}</div>
             </div>
             <div>
+              <div className="text-xs font-medium uppercase text-slate-400">Product code</div>
+              <div className="font-mono text-slate-700">{product.sku || "—"}</div>
+            </div>
+            <div>
               <div className="text-xs font-medium uppercase text-slate-400">Category</div>
               <div className="text-slate-700">{product.categoryName ?? "—"}</div>
             </div>

@@ -97,7 +97,7 @@ export default function SellerDashboardPage() {
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-4 w-1 rounded-full bg-[#f0563f]" />
+                  <div className="h-4 w-1 rounded-full bg-[var(--brand)]" />
                   <h2 className="text-xl font-semibold text-slate-900">Recent Orders</h2>
                 </div>
               </div>
@@ -164,6 +164,7 @@ export default function SellerDashboardPage() {
                     <ProductThumbnail name={item.productName} imageUrls={item.imageUrls} className="h-14 w-14 shrink-0" bare />
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium text-slate-800">{item.productName}</div>
+                      {item.sku && <div className="font-mono text-xs text-slate-400">{item.sku}</div>}
                       <div className="mt-1 flex gap-3 text-xs text-slate-600">
                         <span>Base <span className="font-semibold text-slate-800">${item.supplierCost.toFixed(2)}</span></span>
                         <span>Seller <span className="font-semibold text-slate-800">${item.sellingPrice.toFixed(2)}</span></span>

@@ -63,13 +63,13 @@ export default function InviteCodesPage() {
       <form onSubmit={handleCreate} className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div>
           <label className="mb-1.5 block text-sm font-medium text-slate-700">Max uses</label>
-          <input type="number" min="1" value={maxUses} onChange={(e) => setMaxUses(e.target.value)} className="w-32 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-[#f0563f] focus:bg-white" />
+          <input type="number" min="1" value={maxUses} onChange={(e) => setMaxUses(e.target.value)} className="w-32 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-[var(--brand)] focus:bg-white" />
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-slate-700">Expires at <span className="font-normal text-slate-400">(optional)</span></label>
-          <input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-[#f0563f] focus:bg-white" />
+          <input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-[var(--brand)] focus:bg-white" />
         </div>
-        <button type="submit" disabled={creating} className="inline-flex items-center gap-2 rounded-xl bg-[#f0563f] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#dc4b34] disabled:opacity-60">
+        <button type="submit" disabled={creating} className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-hover)] disabled:opacity-60">
           <Plus className="h-4 w-4" />
           {creating ? "Creating..." : "Create code"}
         </button>
@@ -95,7 +95,7 @@ export default function InviteCodesPage() {
                 {codes.map((code) => (
                   <tr key={code.id} className="border-b border-slate-200 last:border-b-0">
                     <td className="px-4 py-3 font-medium text-slate-800">
-                      <button onClick={() => navigator.clipboard.writeText(code.code)} className="inline-flex items-center gap-1 hover:text-[#f0563f]">
+                      <button onClick={() => navigator.clipboard.writeText(code.code)} className="inline-flex items-center gap-1 hover:text-[var(--brand)]">
                         {code.code} <Copy className="h-3.5 w-3.5" />
                       </button>
                     </td>

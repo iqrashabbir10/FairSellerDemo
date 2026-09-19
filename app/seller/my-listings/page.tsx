@@ -58,6 +58,7 @@ function AddQuantityModal({
           <div className="min-w-0">
             <div className="truncate text-sm font-medium text-slate-900">{item.productName}</div>
             <div className="text-xs text-slate-500">Currently {item.quantity.toLocaleString()} listed</div>
+            {item.sku && <div className="font-mono text-xs text-slate-400">{item.sku}</div>}
           </div>
         </div>
 
@@ -171,7 +172,7 @@ export default function SellerMyListingsPage() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-[var(--brand)] focus:bg-white"
-              placeholder="Search my listings"
+              placeholder="Search by name or product code"
             />
           </div>
           <ViewToggle value={view} onChange={setView} />
@@ -200,6 +201,7 @@ export default function SellerMyListingsPage() {
             <article key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <ProductThumbnail name={item.productName} imageUrls={item.imageUrls} className="h-28 w-full" />
               <h2 className="font-semibold text-slate-900">{item.productName}</h2>
+              {item.sku && <p className="mt-0.5 font-mono text-xs text-slate-400">{item.sku}</p>}
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <div className="rounded-lg bg-slate-50 px-2.5 py-2">
                   <div className="text-xs text-slate-500">Base Price</div>
@@ -225,6 +227,7 @@ export default function SellerMyListingsPage() {
                 <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
                   <th className="px-4 py-3 font-medium">Image</th>
                   <th className="px-4 py-3 font-medium">Product</th>
+                  <th className="px-4 py-3 font-medium">Code</th>
                   <th className="px-4 py-3 font-medium text-right">Base Price</th>
                   <th className="px-4 py-3 font-medium text-right">Seller Price</th>
                   <th className="px-4 py-3 font-medium text-right">Quantity listed</th>
@@ -238,6 +241,7 @@ export default function SellerMyListingsPage() {
                       <ProductThumbnail name={item.productName} imageUrls={item.imageUrls} className="h-10 w-10" bare />
                     </td>
                     <td className="px-4 py-3 font-medium text-slate-800">{item.productName}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-500">{item.sku || "—"}</td>
                     <td className="px-4 py-3 text-right text-slate-600">${item.supplierCost.toFixed(2)}</td>
                     <td className="px-4 py-3 text-right font-medium text-slate-800">${item.sellingPrice.toFixed(2)}</td>
                     <td className="px-4 py-3 text-right text-slate-600">{item.quantity.toLocaleString()}</td>

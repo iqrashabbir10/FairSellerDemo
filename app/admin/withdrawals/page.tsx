@@ -97,7 +97,7 @@ export default function WithdrawalsPage() {
                           <X className="h-3.5 w-3.5" />
                           Reject
                         </button>
-                        <button onClick={() => changeStatus(item.id, "Paid")} className="inline-flex items-center gap-1 rounded-lg bg-[#f0563f] px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-[#dc4b34]">
+                        <button onClick={() => changeStatus(item.id, "Paid")} className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand)] px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-[var(--brand-hover)]">
                           <Clock3 className="h-3.5 w-3.5" />
                           Mark Paid
                         </button>

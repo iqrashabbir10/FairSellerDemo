@@ -3,9 +3,9 @@
 :root {
   --background: #f6f5f3;
   --foreground: #1a1d23;
-  --brand: #f0563f;
-  --brand-hover: #dc4b34;
-  --brand-dark: #c7402c;
+  --brand: #7c3aed;
+  --brand-hover: #6d28d9;
+  --brand-dark: #5b21b6;
   --surface: #ffffff;
   --canvas: #f6f5f3;
   --muted: #6b7280;
@@ -50,4 +50,23 @@ textarea {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes bell-ring {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(14deg); }
+  40% { transform: rotate(-12deg); }
+  60% { transform: rotate(8deg); }
+  80% { transform: rotate(-4deg); }
 }

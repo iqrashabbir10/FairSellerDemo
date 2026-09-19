@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import type { AuthResponse, ChangePasswordPayload, LoginPayload, SellerRegisterPayload } from "./types";
+import type { AuthResponse, ChangePasswordPayload, LoginPayload, SellerRegisterPayload, SetNewPasswordPayload } from "./types";
 
 export function sellerRegister(payload: SellerRegisterPayload) {
   const formData = new FormData();
@@ -35,7 +35,12 @@ export function refreshToken(refreshTokenValue: string) {
 }
 
 export function changePassword(payload: ChangePasswordPayload) {
-  return apiFetch<null>("/api/auth/change-password", { method: "POST", body: payload });
+  return apiFetch<AuthResponse>("/api/auth/change-password", { method: "POST", body: payload });
+}
+
+// For accounts whose password an admin reset: choose a new one without knowing the old one. Returns fresh tokens.
+export function setNewPassword(payload: SetNewPasswordPayload) {
+  return apiFetch<AuthResponse>("/api/auth/set-new-password", { method: "POST", body: payload });
 }
 
 export function logout() {

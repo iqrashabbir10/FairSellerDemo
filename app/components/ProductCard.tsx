@@ -39,7 +39,10 @@ export function ProductCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-4">
-        <h2 className="line-clamp-1 text-base font-semibold text-slate-900">{product.name}</h2>
+        <div>
+          <h2 className="line-clamp-1 text-base font-semibold text-slate-900">{product.name}</h2>
+          {product.sku && <p className="mt-0.5 font-mono text-xs text-slate-400">{product.sku}</p>}
+        </div>
         {product.description && <p className="line-clamp-2 text-sm text-slate-500">{product.description}</p>}
 
         <div className="mt-auto grid grid-cols-2 gap-2">

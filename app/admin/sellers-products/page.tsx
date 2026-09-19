@@ -126,7 +126,7 @@ export default function SellersProductsPage() {
 
   const filteredProducts = useMemo(() => {
     const term = productSearch.trim().toLowerCase();
-    return products.filter((p) => !term || p.productName.toLowerCase().includes(term));
+    return products.filter((p) => !term || p.productName.toLowerCase().includes(term) || p.sku?.toLowerCase().includes(term));
   }, [products, productSearch]);
 
   const totalProductsPages = Math.max(1, Math.ceil(filteredProducts.length / productsPageSize));
@@ -274,7 +274,7 @@ export default function SellersProductsPage() {
                   setProductSearch(e.target.value);
                   setProductsPage(1);
                 }}
-                placeholder="Search products"
+                placeholder="Search by name or product code"
                 className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-[var(--brand)]"
               />
             </div>
@@ -298,6 +298,7 @@ export default function SellersProductsPage() {
                         <div className="flex flex-1 flex-col gap-3 p-4">
                           <div>
                             <h3 className="line-clamp-1 font-semibold text-slate-900">{product.productName}</h3>
+                            {product.sku && <p className="font-mono text-xs text-slate-400">{product.sku}</p>}
                             <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
                               <Package className="h-3.5 w-3.5" />
                               {product.quantity} listed
@@ -383,6 +384,7 @@ export default function SellersProductsPage() {
                     <ProductThumbnail name={line.productName} imageUrls={line.imageUrls} className="h-12 w-12 shrink-0" bare />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium text-slate-900">{line.productName}</div>
+                      {line.sku && <div className="font-mono text-[11px] text-slate-400">{line.sku}</div>}
                       <div className="mt-1 flex items-center gap-1">
                         <button onClick={() => setLineQuantity(line, line.cartQuantity - 1)} className="flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50" aria-label="Decrease quantity">
                           <Minus className="h-3 w-3" />

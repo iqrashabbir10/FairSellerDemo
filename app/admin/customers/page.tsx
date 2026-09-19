@@ -163,7 +163,7 @@ export default function CustomersPage() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[#f0563f]"
+              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[var(--brand)]"
               placeholder="Search customers"
             />
           </div>

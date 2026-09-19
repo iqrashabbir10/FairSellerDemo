@@ -14,6 +14,7 @@ import type {
   PagedResult,
   PendingPaymentDto,
   ProductDto,
+  ResetPasswordResult,
   SellerProductDto,
   SellerStatus,
   SupportConversationSummaryDto,
@@ -55,6 +56,11 @@ export function updateSellerStatus(id: string, payload: UpdateSellerStatusPayloa
     method: "PUT",
     body: payload,
   });
+}
+
+// Generates a one-time temporary password for the seller (shown once); they must pick a new one at next sign-in.
+export function resetSellerPassword(id: string) {
+  return apiFetch<ResetPasswordResult>(`/api/admin/sellers/${id}/reset-password`, { method: "POST" });
 }
 
 export function getAdminOrders(request?: PagedRequest) {
@@ -102,6 +108,7 @@ export function getAdminProduct(id: string) {
 export function createAdminProduct(payload: CreateProductPayload) {
   const formData = new FormData();
   formData.append("name", payload.name);
+  if (payload.sku) formData.append("sku", payload.sku);
   formData.append("description", payload.description);
   formData.append("categoryId", payload.categoryId);
   formData.append("supplierCost", String(payload.supplierCost));
@@ -119,6 +126,17 @@ export function updateAdminProduct(id: string, payload: UpdateProductPayload) {
     method: "PUT",
     body: { ...body, stockQuantity: body.stockQuantity ?? 0 },
   });
+}
+
+// Photos of an existing product: add new ones, or remove one by id.
+export function addProductImages(productId: string, files: File[]) {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("images", file));
+  return apiFetch<ProductDto>(`/api/admin/products/${productId}/images`, { method: "POST", body: formData });
+}
+
+export function deleteProductImage(productId: string, imageId: string) {
+  return apiFetch<null>(`/api/admin/products/${productId}/images/${imageId}`, { method: "DELETE" });
 }
 
 export function deleteAdminProduct(id: string) {

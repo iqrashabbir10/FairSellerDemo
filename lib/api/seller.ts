@@ -1,7 +1,6 @@
 import { apiFetch, toPagedQuery } from "./client";
 import type {
   CreateWithdrawalPayload,
-  NotificationDto,
   PagedRequest,
   PagedResult,
   PickOrderResultDto,
@@ -104,12 +103,4 @@ export function getSellerSupportMessages(conversationId: string, request?: Paged
 
 export function markSellerSupportMessagesRead(conversationId: string) {
   return apiFetch<{ success: boolean }>(`/api/seller/support/${conversationId}/messages/read`, { method: "POST" });
-}
-
-export function getSellerNotifications(request?: PagedRequest) {
-  return apiFetch<PagedResult<NotificationDto>>("/api/seller/notifications", { query: toPagedQuery(request) });
-}
-
-export function markSellerNotificationRead(id: string) {
-  return apiFetch<{ success: boolean }>(`/api/seller/notifications/${id}/read`, { method: "POST" });
 }

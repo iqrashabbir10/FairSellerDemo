@@ -171,7 +171,7 @@ export default function AddMoneyPage() {
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Search by seller or shop name"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-[#f0563f] focus:bg-white"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-[var(--brand)] focus:bg-white"
                 />
               </div>
               {sellersError && <div className="mb-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{sellersError}</div>}
@@ -192,10 +192,10 @@ export default function AddMoneyPage() {
                             setSuccess("");
                           }}
                           aria-pressed={active}
-                          className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition ${active ? "bg-[#f0563f]/5" : "hover:bg-slate-50"}`}
+                          className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition ${active ? "bg-[var(--brand)]/5" : "hover:bg-slate-50"}`}
                         >
                           <span className="flex min-w-0 items-center gap-3">
-                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${active ? "bg-[#f0563f] text-white" : "bg-[#f0563f]/10 text-[#f0563f]"}`}>
+                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${active ? "bg-[var(--brand)] text-white" : "bg-[var(--brand)]/10 text-[var(--brand)]"}`}>
                               <Store className="h-4 w-4" />
                             </span>
                             <span className="min-w-0">
@@ -235,7 +235,7 @@ export default function AddMoneyPage() {
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"
                   aria-invalid={!!amountError}
-                  className={`w-full rounded-xl border bg-slate-50 py-2.5 pl-7 pr-3 text-sm text-slate-700 outline-none focus:bg-white ${amountError ? "border-red-300 focus:border-red-400" : "border-slate-200 focus:border-[#f0563f]"}`}
+                  className={`w-full rounded-xl border bg-slate-50 py-2.5 pl-7 pr-3 text-sm text-slate-700 outline-none focus:bg-white ${amountError ? "border-red-300 focus:border-red-400" : "border-slate-200 focus:border-[var(--brand)]"}`}
                 />
               </div>
               {amountError ? (
@@ -260,7 +260,7 @@ export default function AddMoneyPage() {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="e.g. Promotional credit for the September campaign"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#f0563f] focus:bg-white"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[var(--brand)] focus:bg-white"
               />
               <div className="mt-1 text-right text-[11px] text-slate-400">{note.length}/{MAX_NOTE}</div>
             </div>
@@ -275,7 +275,7 @@ export default function AddMoneyPage() {
             <button
               type="submit"
               disabled={!canSubmit}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#f0563f] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#dc4b34] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-hover)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Coins className="h-4 w-4" />
               Credit Wallet
@@ -328,7 +328,7 @@ export default function AddMoneyPage() {
             {submitError && <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{submitError}</div>}
             <div className="mt-5 flex justify-end gap-2">
               <button onClick={() => setConfirming(false)} disabled={submitting} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">Cancel</button>
-              <button onClick={submit} disabled={submitting} className="rounded-xl bg-[#f0563f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#dc4b34] disabled:opacity-60">
+              <button onClick={submit} disabled={submitting} className="rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-hover)] disabled:opacity-60">
                 {submitting ? "Adding…" : submitError ? "Retry" : "Confirm"}
               </button>
             </div>

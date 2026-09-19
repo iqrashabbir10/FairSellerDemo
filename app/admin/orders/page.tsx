@@ -38,7 +38,7 @@ function StatusBadge({ status }: { status: OrderStatus | "Mixed" }) {
   );
 }
 
-const selectClass = "rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#f0563f]";
+const selectClass = "rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[var(--brand)]";
 const money = (value: number) => `$${value.toFixed(2)}`;
 
 async function fetchAll<T>(load: (page: number) => Promise<{ items: T[]; totalPages: number }>) {
@@ -138,14 +138,14 @@ function ConfirmStatusModal({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={2}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#f0563f] focus:bg-white"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none focus:border-[var(--brand)] focus:bg-white"
           />
         </label>
         <div className="mt-5 flex justify-end gap-2">
           <button onClick={onCancel} disabled={saving} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">
             Cancel
           </button>
-          <button onClick={() => onConfirm(note.trim())} disabled={saving} className="rounded-xl bg-[#f0563f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#dc4b34] disabled:opacity-60">
+          <button onClick={() => onConfirm(note.trim())} disabled={saving} className="rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-hover)] disabled:opacity-60">
             {saving ? "Updating…" : "Confirm"}
           </button>
         </div>
@@ -157,17 +157,18 @@ function ConfirmStatusModal({
 function InvoiceModal({
   invoice,
   sellerName,
+  sellerEmail,
   productName,
   statusControl,
   onClose,
 }: {
   invoice: Invoice;
   sellerName: string;
+  sellerEmail?: string;
   productName: (id: string) => string;
   statusControl: React.ReactNode;
   onClose: () => void;
 }) {
-  const paymentStatuses = Array.from(new Set(invoice.lines.map((l) => l.paymentStatus)));
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 sm:items-center" onClick={onClose}>
       <style>{`@media print {
@@ -193,7 +194,7 @@ function InvoiceModal({
         <div id="invoice-print" className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-700 shadow-xl sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-6">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f0563f] text-sm font-bold text-white">W</div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--brand)] text-sm font-bold text-white">W</div>
               <div>
                 <div className="text-lg font-semibold text-slate-900">WayFeir</div>
                 <div className="text-xs text-slate-500">Marketplace</div>
@@ -218,8 +219,7 @@ function InvoiceModal({
             <div className="sm:text-right">
               <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Sold by</div>
               <div className="font-semibold text-slate-900">{sellerName}</div>
-              <div className="mt-3 mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Payment</div>
-              <div>{paymentStatuses.map(statusLabel).join(", ")}</div>
+              {sellerEmail && <div className="break-all">{sellerEmail}</div>}
             </div>
           </div>
 
@@ -238,6 +238,7 @@ function InvoiceModal({
                   <tr key={line.id} className="border-b border-slate-100 last:border-b-0">
                     <td className="py-3">
                       <div className="font-medium text-slate-900">{productName(line.productId)}</div>
+                      {line.productSku && <div className="font-mono text-xs text-slate-500">SKU {line.productSku}</div>}
                       <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
                         {line.orderNumber}
                         {invoice.lines.length > 1 && <StatusBadge status={line.status} />}
@@ -279,6 +280,7 @@ export default function AdminOrdersPage() {
   const [view, setView] = useResponsiveView();
   const [orders, setOrders] = useState<AdminOrderDto[]>([]);
   const [sellerNames, setSellerNames] = useState<Record<string, string>>({});
+  const [sellerEmails, setSellerEmails] = useState<Record<string, string>>({});
   const [productNames, setProductNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -306,6 +308,7 @@ export default function AdminOrdersPage() {
         if (cancelled) return;
         setOrders(allOrders);
         setSellerNames(Object.fromEntries(sellers.map((s) => [s.id, s.shopName || s.fullName])));
+        setSellerEmails(Object.fromEntries(sellers.map((s) => [s.id, s.email])));
         setProductNames(Object.fromEntries(products.map((p) => [p.id, p.name])));
       } catch (err) {
         if (!cancelled) setError(err instanceof ApiError ? err.message : "Failed to load orders.");
@@ -336,7 +339,7 @@ export default function AdminOrdersPage() {
     return invoices
       .filter((inv) => statusFilter === "All" || inv.lines.some((l) => l.status === statusFilter))
       .filter((inv) => !sellerFilter || inv.sellerId === sellerFilter)
-      .filter((inv) => !term || inv.customerName.toLowerCase().includes(term) || inv.lines.some((l) => l.orderNumber.toLowerCase().includes(term)));
+      .filter((inv) => !term || inv.customerName.toLowerCase().includes(term) || inv.lines.some((l) => l.orderNumber.toLowerCase().includes(term) || l.productSku?.toLowerCase().includes(term)));
   }, [invoices, statusFilter, sellerFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -384,7 +387,7 @@ export default function AdminOrdersPage() {
       value={ADMIN_SETTABLE.includes(invoice.status as OrderStatus) ? invoice.status : ""}
       onChange={(e) => e.target.value && setPending({ invoiceKey: invoice.key, status: e.target.value as OrderStatus })}
       aria-label={`Change status of ${invoiceNumber(invoice)}`}
-      className={`rounded-lg border px-2 py-1.5 text-xs font-medium outline-none focus:border-[#f0563f] ${dark ? "border-white/30 bg-white text-slate-700" : "border-slate-200 bg-white text-slate-700"}`}
+      className={`rounded-lg border px-2 py-1.5 text-xs font-medium outline-none focus:border-[var(--brand)] ${dark ? "border-white/30 bg-white text-slate-700" : "border-slate-200 bg-white text-slate-700"}`}
     >
       {!ADMIN_SETTABLE.includes(invoice.status as OrderStatus) && (
         <option value="" disabled>
@@ -412,8 +415,8 @@ export default function AdminOrdersPage() {
             <input
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[#f0563f]"
-              placeholder="Search order # or customer"
+              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[var(--brand)]"
+              placeholder="Search order #, customer or product code"
             />
           </div>
           <select value={sellerFilter} onChange={(e) => { setSellerFilter(e.target.value); setPage(1); }} className={selectClass} aria-label="Filter by seller">
@@ -435,7 +438,7 @@ export default function AdminOrdersPage() {
               key={tab}
               onClick={() => { setStatusFilter(tab); setPage(1); }}
               className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                active ? "bg-[#f0563f] text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                active ? "bg-[var(--brand)] text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
               }`}
             >
               {tab === "All" ? "All" : statusLabel(tab)} <span className={active ? "text-white/80" : "text-slate-400"}>{count}</span>
@@ -462,9 +465,14 @@ export default function AdminOrdersPage() {
               <p className="mt-4 text-sm text-slate-700">{invoice.customerName}</p>
               <p className="text-sm text-slate-500">{sellerName(invoice.sellerId)}</p>
               <p className="mt-1 text-sm text-slate-500">
-                {invoice.lines.length === 1
-                  ? `${productName(invoice.lines[0].productId)} × ${invoice.lines[0].quantity}`
-                  : `${invoice.lines.length} products`}
+                {invoice.lines.length === 1 ? (
+                  <>
+                    {productName(invoice.lines[0].productId)} × {invoice.lines[0].quantity}
+                    {invoice.lines[0].productSku && <span className="block font-mono text-xs text-slate-400">{invoice.lines[0].productSku}</span>}
+                  </>
+                ) : (
+                  `${invoice.lines.length} products`
+                )}
               </p>
               <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-3 text-sm">
                 <span className="text-slate-500">{new Date(invoice.createdAtUtc).toLocaleDateString()}</span>
@@ -503,9 +511,14 @@ export default function AdminOrdersPage() {
                     <td className="px-4 py-3 text-slate-700">{invoice.customerName}</td>
                     <td className="px-4 py-3 text-slate-700">{sellerName(invoice.sellerId)}</td>
                     <td className="px-4 py-3 text-slate-600">
-                      {invoice.lines.length === 1
-                        ? `${productName(invoice.lines[0].productId)} × ${invoice.lines[0].quantity}`
-                        : `${invoice.lines.length} products`}
+                      {invoice.lines.length === 1 ? (
+                        <>
+                          {productName(invoice.lines[0].productId)} × {invoice.lines[0].quantity}
+                          {invoice.lines[0].productSku && <span className="block font-mono text-xs text-slate-400">{invoice.lines[0].productSku}</span>}
+                        </>
+                      ) : (
+                        `${invoice.lines.length} products`
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-slate-800">{money(invoice.total)}</td>
                     <td className="px-4 py-3"><StatusBadge status={invoice.status} /></td>
@@ -542,6 +555,7 @@ export default function AdminOrdersPage() {
         <InvoiceModal
           invoice={detailInvoice}
           sellerName={sellerName(detailInvoice.sellerId)}
+          sellerEmail={sellerEmails[detailInvoice.sellerId]}
           productName={productName}
           statusControl={<>Status: {statusSelect(detailInvoice, true)}</>}
           onClose={() => setDetailKey(null)}

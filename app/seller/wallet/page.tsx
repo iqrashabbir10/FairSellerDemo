@@ -81,7 +81,7 @@ export default function SellerWalletPage() {
           </div>
           <button
             onClick={() => setShowForm((current) => !current)}
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#f0563f] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#dc4b34]"
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-hover)]"
           >
             <Send className="h-4 w-4" />
             Request Withdrawal
@@ -91,11 +91,11 @@ export default function SellerWalletPage() {
             <form onSubmit={handleSubmit} className="mt-5 space-y-3 border-t border-slate-100 pt-5">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">Amount</label>
-                <input required type="number" min="1" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-[#f0563f] focus:bg-white" />
+                <input required type="number" min="1" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-[var(--brand)] focus:bg-white" />
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">Method</label>
-                <select value={method} onChange={(e) => setMethod(e.target.value as WithdrawalMethod)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-[#f0563f] focus:bg-white">
+                <select value={method} onChange={(e) => setMethod(e.target.value as WithdrawalMethod)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-[var(--brand)] focus:bg-white">
                   <option value="BankTransfer">Bank Transfer</option>
                   <option value="CashOnHand">Cash On Hand</option>
                   <option value="MobileWallet">Mobile Wallet</option>
@@ -103,10 +103,10 @@ export default function SellerWalletPage() {
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">Payment details</label>
-                <textarea required rows={3} value={paymentDetails} onChange={(e) => setPaymentDetails(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-[#f0563f] focus:bg-white" placeholder="IBAN, account or wallet number" />
+                <textarea required rows={3} value={paymentDetails} onChange={(e) => setPaymentDetails(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-[var(--brand)] focus:bg-white" placeholder="IBAN, account or wallet number" />
               </div>
               {formError && <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</div>}
-              <button type="submit" disabled={submitting} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#f0563f] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#dc4b34] disabled:opacity-60">
+              <button type="submit" disabled={submitting} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-hover)] disabled:opacity-60">
                 {submitting ? "Submitting..." : "Submit request"}
               </button>
             </form>

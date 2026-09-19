@@ -21,7 +21,7 @@ export default function StorehousePage() {
             <Plus className="h-4 w-4" />
             Add Stock
           </button>
-          <button className="inline-flex items-center gap-2 rounded-xl bg-[#f0563f] px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-[#dc4b34]">
+          <button className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand)] px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-hover)]">
             <RotateCcw className="h-4 w-4" />
             Adjust Stock
           </button>

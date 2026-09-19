@@ -116,6 +116,11 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     const message = payload?.message || friendlyStatusMessage(response.status);
     // Session expired/invalid on an authenticated request — force back to login instead of
     // leaving the page stuck on a raw 401 error.
+    if (response.status === 403 && auth && payload?.errors?.includes("PASSWORD_CHANGE_REQUIRED")) {
+      if (typeof window !== "undefined" && window.location.pathname !== "/auth/set-password") {
+        window.location.href = "/auth/set-password";
+      }
+    }
     if (response.status === 401 && auth) {
       clearSession();
       if (typeof window !== "undefined" && window.location.pathname !== "/") {

@@ -122,7 +122,7 @@ export default function SellersPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[#f0563f]"
+              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[var(--brand)]"
               placeholder="Search sellers"
             />
           </div>
@@ -139,7 +139,7 @@ export default function SellersPage() {
               setPage(1);
             }}
             className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-              statusFilter === tab ? "bg-[#f0563f] text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              statusFilter === tab ? "bg-[var(--brand)] text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
             }`}
           >
             {tab}
@@ -162,7 +162,7 @@ export default function SellersPage() {
               <div key={seller.id} className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 ${view === "list" ? "flex flex-wrap items-center justify-between gap-4" : ""}`}>
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f0563f]/10 text-sm font-semibold text-[#f0563f]">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--brand)]/10 text-sm font-semibold text-[var(--brand)]">
                       {(seller.shopName || seller.fullName).slice(0, 2).toUpperCase()}
                     </div>
                     <div>
@@ -195,13 +195,13 @@ export default function SellersPage() {
                         }
                       }}
                       aria-label={`Change status of ${seller.shopName || seller.fullName}`}
-                      className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 outline-none focus:border-[#f0563f]"
+                      className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 outline-none focus:border-[var(--brand)]"
                     >
                       {SELLER_STATUSES.map((s) => (
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
-                  <Link href={`/admin/sellers/${seller.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-[#f0563f]">
+                  <Link href={`/admin/sellers/${seller.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-[var(--brand)]">
                     View profile
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Link>

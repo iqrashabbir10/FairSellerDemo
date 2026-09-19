@@ -43,7 +43,7 @@ export function SellerStatusConfirmModal({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={3}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#f0563f] focus:bg-white"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none focus:border-[var(--brand)] focus:bg-white"
           />
         </label>
         {error && <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
@@ -54,7 +54,7 @@ export function SellerStatusConfirmModal({
           <button
             onClick={() => onConfirm(reason.trim())}
             disabled={saving || (reasonRequired && !reason.trim())}
-            className="rounded-xl bg-[#f0563f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#dc4b34] disabled:opacity-60"
+            className="rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-hover)] disabled:opacity-60"
           >
             {saving ? "Updating…" : "Confirm"}
           </button>

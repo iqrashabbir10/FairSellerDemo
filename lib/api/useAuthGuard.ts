@@ -16,6 +16,10 @@ export function useAuthGuard(role: UserRole) {
       router.replace("/");
       return;
     }
+    if (session.mustChangePassword) {
+      router.replace("/auth/set-password");
+      return;
+    }
     setReady(true);
   }, [role, router]);
 

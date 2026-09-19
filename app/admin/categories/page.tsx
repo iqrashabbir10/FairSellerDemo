@@ -99,9 +99,9 @@ export default function AdminCategoriesPage() {
       <form onSubmit={handleCreate} className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="min-w-[220px] flex-1">
           <label className="mb-1.5 block text-sm font-medium text-slate-700">Category name</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Home & Living" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-[#f0563f] focus:bg-white" />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Home & Living" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-[var(--brand)] focus:bg-white" />
         </div>
-        <button type="submit" disabled={creating} className="inline-flex items-center gap-2 rounded-xl bg-[#f0563f] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#dc4b34] disabled:opacity-60">
+        <button type="submit" disabled={creating} className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-hover)] disabled:opacity-60">
           <Plus className="h-4 w-4" />
           {creating ? "Adding..." : "Add category"}
         </button>
@@ -133,7 +133,7 @@ export default function AdminCategoriesPage() {
                           if (e.key === "Enter") handleSave(category);
                           if (e.key === "Escape") setEditingId(null);
                         }}
-                        className="w-full max-w-sm rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm outline-none focus:border-[#f0563f] focus:bg-white"
+                        className="w-full max-w-sm rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm outline-none focus:border-[var(--brand)] focus:bg-white"
                       />
                     ) : (
                       category.name
@@ -143,7 +143,7 @@ export default function AdminCategoriesPage() {
                     <div className="flex justify-end gap-2">
                       {editingId === category.id ? (
                         <>
-                          <button onClick={() => handleSave(category)} disabled={busyId === category.id} className="inline-flex items-center gap-1 rounded-lg bg-[#f0563f] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#dc4b34] disabled:opacity-60">
+                          <button onClick={() => handleSave(category)} disabled={busyId === category.id} className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand)] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[var(--brand-hover)] disabled:opacity-60">
                             <Check className="h-3.5 w-3.5" /> Save
                           </button>
                           <button onClick={() => setEditingId(null)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">

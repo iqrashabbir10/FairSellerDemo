@@ -9,6 +9,7 @@ export interface AuthSession {
   expiresAtUtc: string;
   userId: string;
   role: UserRole;
+  mustChangePassword?: boolean;
 }
 
 export function getSession(): AuthSession | null {

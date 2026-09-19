@@ -7,6 +7,7 @@ import { sellerRegister } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import type { IdentityDocumentType } from "@/lib/api/types";
 import { Banner, Field, inputClass } from "@/app/components/ProfileUi";
+import { PhoneInput } from "@/app/components/PhoneInput";
 
 const steps = [
   { title: "Your account", hint: "Who you are", icon: CircleUserRound },
@@ -68,12 +69,12 @@ function fileProblem(file: File): string | null {
 
 type Errors = Partial<Record<keyof FormState | "file", string>>;
 
-function validateStep(step: number, form: FormState, file: File | null): Errors {
+function validateStep(step: number, form: FormState, file: File | null, phoneValid: boolean): Errors {
   const errors: Errors = {};
   if (step === 0) {
     if (!form.fullName.trim()) errors.fullName = "Please enter your full name.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors.email = "Enter a valid email address, like you@example.com.";
-    if (form.phoneNumber.trim().replace(/[^\d]/g, "").length < 7) errors.phoneNumber = "Enter a valid phone number.";
+    if (!phoneValid) errors.phoneNumber = "Enter a valid phone number for the selected country.";
     if (!passwordRules(form.password).every((r) => r.ok)) errors.password = "Your password doesn't meet all the requirements yet.";
     if (form.confirmPassword !== form.password) errors.confirmPassword = "The two passwords don't match.";
   }
@@ -109,6 +110,7 @@ export default function SellerRegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [phoneValid, setPhoneValid] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -143,13 +145,13 @@ export default function SellerRegisterPage() {
   };
 
   const next = () => {
-    const found = validateStep(step, form, file);
+    const found = validateStep(step, form, file, phoneValid);
     setErrors(found);
     if (Object.keys(found).length === 0) setStep((s) => Math.min(s + 1, steps.length - 1));
   };
 
   const submit = async () => {
-    const found = validateStep(2, form, file);
+    const found = validateStep(2, form, file, phoneValid);
     setErrors(found);
     if (Object.keys(found).length > 0 || !file || submitting) return;
 
@@ -203,14 +205,14 @@ export default function SellerRegisterPage() {
             </p>
           </div>
 
-          <ol className="mt-8 space-y-3 rounded-2xl border border-slate-200 bg-[#fff7f4] p-5 text-sm text-slate-700">
+          <ol className="mt-8 space-y-3 rounded-2xl border border-slate-200 bg-[color-mix(in_srgb,var(--brand)_8%,white)] p-5 text-sm text-slate-700">
             <li className="flex items-start gap-3"><span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white"><Check className="h-3.5 w-3.5" /></span><span><span className="font-medium">Application received</span> — done.</span></li>
-            <li className="flex items-start gap-3"><span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f0563f] text-xs font-semibold text-white">2</span><span><span className="font-medium">Admin verification</span> — in progress. This can take a little while.</span></li>
+            <li className="flex items-start gap-3"><span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--brand)] text-xs font-semibold text-white">2</span><span><span className="font-medium">Admin verification</span> — in progress. This can take a little while.</span></li>
             <li className="flex items-start gap-3"><span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-600">3</span><span><span className="font-medium">Start selling</span> — sign in with <span className="break-all font-medium">{form.email}</span> once you&apos;re approved.</span></li>
           </ol>
 
           <div className="mt-8 flex justify-center">
-            <Link href="/" className="inline-flex items-center justify-center rounded-xl bg-[#f0563f] px-6 py-3 text-sm font-semibold text-white hover:bg-[#dc4b34]">
+            <Link href="/" className="inline-flex items-center justify-center rounded-xl bg-[var(--brand)] px-6 py-3 text-sm font-semibold text-white hover:bg-[var(--brand-hover)]">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to login
             </Link>
@@ -232,7 +234,7 @@ export default function SellerRegisterPage() {
             <div className="text-sm font-medium uppercase tracking-[0.2em] text-slate-500">Seller onboarding</div>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">Create your seller account</h1>
           </div>
-          <Link href="/" className="shrink-0 text-sm font-medium text-[#f0563f] hover:text-[#dc4b34]">Back to login</Link>
+          <Link href="/" className="shrink-0 text-sm font-medium text-[var(--brand)] hover:text-[var(--brand-hover)]">Back to login</Link>
         </div>
 
         <div className="mb-6">
@@ -241,7 +243,7 @@ export default function SellerRegisterPage() {
             <span>{Math.round(progress)}%</span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
-            <div className="h-full rounded-full bg-[#f0563f] transition-all duration-300" style={{ width: `${progress}%` }} />
+            <div className="h-full rounded-full bg-[var(--brand)] transition-all duration-300" style={{ width: `${progress}%` }} />
           </div>
         </div>
 
@@ -251,8 +253,8 @@ export default function SellerRegisterPage() {
             const active = index === step;
             const done = index < step;
             return (
-              <li key={item.title} aria-current={active ? "step" : undefined} className={`flex items-center gap-3 rounded-2xl border p-3 ${active ? "border-[#f0563f] bg-[#fff5f2]" : done ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${active ? "bg-[#f0563f] text-white" : done ? "bg-emerald-500 text-white" : "bg-white text-slate-600"}`}>
+              <li key={item.title} aria-current={active ? "step" : undefined} className={`flex items-center gap-3 rounded-2xl border p-3 ${active ? "border-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_8%,white)]" : done ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${active ? "bg-[var(--brand)] text-white" : done ? "bg-emerald-500 text-white" : "bg-white text-slate-600"}`}>
                   {done ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
                 </div>
                 <div>
@@ -295,9 +297,22 @@ export default function SellerRegisterPage() {
               <Field label="Email" error={errors.email} hint="You'll use this to sign in.">
                 <input type="email" value={form.email} onChange={(e) => update("email", e.target.value)} autoComplete="email" placeholder="you@example.com" className={`${inputClass} ${ring("email")}`} />
               </Field>
-              <Field label="Phone number" error={errors.phoneNumber}>
-                <input value={form.phoneNumber} onChange={(e) => update("phoneNumber", e.target.value)} inputMode="tel" autoComplete="tel" placeholder="+92 300 0000000" className={`${inputClass} ${ring("phoneNumber")}`} />
-              </Field>
+              <div>
+                <label htmlFor="phone" className="mb-1.5 block text-sm font-medium text-slate-700">Phone number</label>
+                <PhoneInput
+                  id="phone"
+                  invalid={!!errors.phoneNumber}
+                  onChange={(e164, valid) => {
+                    setPhoneValid(valid);
+                    update("phoneNumber", e164);
+                  }}
+                />
+                {errors.phoneNumber ? (
+                  <span className="mt-1 block text-xs text-red-600">{errors.phoneNumber}</span>
+                ) : (
+                  <span className="mt-1 block text-xs text-slate-400">Pick your country, then type your number — we&apos;ll format it for you.</span>
+                )}
+              </div>
               <Field label="Invitation code (optional)" hint="Have one from us? Enter it here.">
                 <input value={form.inviteCode} onChange={(e) => update("inviteCode", e.target.value)} placeholder="e.g. WELCOME-2026" className={inputClass} />
               </Field>
@@ -374,13 +389,13 @@ export default function SellerRegisterPage() {
                     onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
                     onDragLeave={() => setDragging(false)}
                     onDrop={(e) => { e.preventDefault(); setDragging(false); chooseFile(e.dataTransfer.files?.[0]); }}
-                    className={`rounded-2xl border-2 border-dashed p-6 text-center transition ${dragging ? "border-[#f0563f] bg-[#fff5f2]" : errors.file ? "border-red-300 bg-red-50/40" : "border-slate-300 bg-slate-50"}`}
+                    className={`rounded-2xl border-2 border-dashed p-6 text-center transition ${dragging ? "border-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_8%,white)]" : errors.file ? "border-red-300 bg-red-50/40" : "border-slate-300 bg-slate-50"}`}
                   >
                     <button type="button" onClick={() => fileInputRef.current?.click()} className="flex w-full flex-col items-center gap-3">
-                      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#f0563f] shadow-sm ring-1 ring-slate-200"><UploadCloud className="h-6 w-6" /></span>
+                      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-[var(--brand)] shadow-sm ring-1 ring-slate-200"><UploadCloud className="h-6 w-6" /></span>
                       <span>
                         <span className="block text-base font-semibold text-slate-800">Upload a photo or scan of your ID</span>
-                        <span className="mt-1 block text-sm text-slate-500">Drag &amp; drop, or <span className="font-medium text-[#f0563f]">browse</span> · PNG, JPG or PDF · max 5 MB</span>
+                        <span className="mt-1 block text-sm text-slate-500">Drag &amp; drop, or <span className="font-medium text-[var(--brand)]">browse</span> · PNG, JPG or PDF · max 5 MB</span>
                       </span>
                     </button>
                   </div>
@@ -392,13 +407,13 @@ export default function SellerRegisterPage() {
 
               <div>
                 <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                  <input type="checkbox" checked={form.termsAccepted} onChange={(e) => update("termsAccepted", e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#f0563f]" />
+                  <input type="checkbox" checked={form.termsAccepted} onChange={(e) => update("termsAccepted", e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--brand)]" />
                   <span>I confirm the details above are accurate and I agree to the marketplace terms and seller policies.</span>
                 </label>
                 {errors.termsAccepted && <p className="mt-1 text-xs text-red-600">{errors.termsAccepted}</p>}
               </div>
 
-              <p className="flex items-start gap-2 rounded-xl bg-[#fff7f4] px-4 py-3 text-xs text-slate-600"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#f0563f]" />Your ID is only used to verify your identity and is visible to our admin team only.</p>
+              <p className="flex items-start gap-2 rounded-xl bg-[color-mix(in_srgb,var(--brand)_8%,white)] px-4 py-3 text-xs text-slate-600"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--brand)]" />Your ID is only used to verify your identity and is visible to our admin team only.</p>
             </div>
           )}
 
@@ -414,12 +429,12 @@ export default function SellerRegisterPage() {
             </button>
 
             {step < steps.length - 1 ? (
-              <button type="submit" className="inline-flex items-center gap-2 rounded-xl bg-[#f0563f] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#dc4b34]">
+              <button type="submit" className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-hover)]">
                 Next
                 <ArrowRight className="h-4 w-4" />
               </button>
             ) : (
-              <button type="submit" disabled={submitting} className="inline-flex items-center gap-2 rounded-xl bg-[#f0563f] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#dc4b34] disabled:opacity-60">
+              <button type="submit" disabled={submitting} className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-hover)] disabled:opacity-60">
                 {submitting ? "Submitting…" : "Submit application"}
                 {!submitting && <ArrowRight className="h-4 w-4" />}
               </button>
@@ -429,7 +444,7 @@ export default function SellerRegisterPage() {
 
         {step === 0 && (
           <p className="mt-6 text-center text-sm text-slate-500">
-            Already have an account? <Link href="/" className="font-medium text-[#f0563f] hover:underline">Sign in</Link>
+            Already have an account? <Link href="/" className="font-medium text-[var(--brand)] hover:underline">Sign in</Link>
           </p>
         )}
       </div>

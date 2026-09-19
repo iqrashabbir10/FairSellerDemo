@@ -27,7 +27,7 @@ export function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (va
         onClick={() => onChange("list")}
         aria-label="List view"
         aria-pressed={value === "list"}
-        className={`inline-flex h-9 w-9 items-center justify-center rounded-lg transition ${value === "list" ? "bg-white text-[#f0563f] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+        className={`inline-flex h-9 w-9 items-center justify-center rounded-lg transition ${value === "list" ? "bg-white text-[var(--brand)] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
       >
         <List className="h-4 w-4" />
       </button>
@@ -36,7 +36,7 @@ export function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (va
         onClick={() => onChange("grid")}
         aria-label="Grid view"
         aria-pressed={value === "grid"}
-        className={`inline-flex h-9 w-9 items-center justify-center rounded-lg transition ${value === "grid" ? "bg-white text-[#f0563f] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+        className={`inline-flex h-9 w-9 items-center justify-center rounded-lg transition ${value === "grid" ? "bg-white text-[var(--brand)] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
       >
         <Grid2X2 className="h-4 w-4" />
       </button>

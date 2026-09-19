@@ -65,6 +65,17 @@ export interface AuthResponse {
   expiresAtUtc: string;
   userId: string;
   role: UserRole;
+  // True after an admin reset: the user must set a new password before using the app.
+  mustChangePassword?: boolean;
+}
+
+export interface SetNewPasswordPayload {
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface ResetPasswordResult {
+  temporaryPassword: string;
 }
 
 export interface SellerRegisterPayload {
@@ -130,6 +141,8 @@ export interface SellerDashboardDto {
 export interface ProductDto {
   id: string;
   name: string;
+  // Unique product code (SKU / barcode) for auditing.
+  sku: string;
   description: string;
   categoryId: string;
   categoryName: string;
@@ -138,6 +151,8 @@ export interface ProductDto {
   stockQuantity: number;
   isAvailable: boolean;
   imageUrls?: string[];
+  // Same photos with ids, so single photos can be removed.
+  images?: { id: string; fileUrl: string }[];
 }
 
 export interface CategoryDto {
@@ -157,6 +172,8 @@ export interface SellerOrderDto {
   createdAtUtc: string;
   // What the seller pays from their wallet to pick this order (supplier cost x quantity).
   pickCost: number;
+  // The product's code as it was when the order was placed.
+  productSku?: string | null;
 }
 
 export interface PickOrderResultDto {
@@ -279,6 +296,16 @@ export interface NotificationDto {
   message: string;
   isRead: boolean;
   createdAtUtc: string;
+  // e.g. OrderAssigned, OrderStatusChanged, OrderPicked, WalletCredited — drives the icon and link.
+  type?: string | null;
+  entityType?: string | null;
+  entityId?: string | null;
+}
+
+// Pushed live over the hub when a notification is created for the signed-in user.
+export interface NotificationPushDto {
+  notification: NotificationDto;
+  unreadCount: number;
 }
 
 export interface AddSellerProductRequest {
@@ -291,6 +318,7 @@ export interface SellerProductDto {
   sellerId: string;
   productId: string;
   productName: string;
+  sku: string;
   quantity: number;
   supplierCost: number;
   sellingPrice: number;
@@ -387,6 +415,7 @@ export interface AdminOrderDto {
   customerEmail: string;
   customerAddress: string;
   createdAtUtc: string;
+  productSku?: string | null;
 }
 
 export interface UpdateOrderStatusPayload {
@@ -396,6 +425,8 @@ export interface UpdateOrderStatusPayload {
 
 export interface CreateProductPayload {
   name: string;
+  // Leave empty to have one generated.
+  sku?: string;
   description: string;
   categoryId: string;
   supplierCost: number;
@@ -406,6 +437,7 @@ export interface CreateProductPayload {
 
 export interface UpdateProductPayload {
   name: string;
+  sku?: string;
   description: string;
   categoryId: string;
   supplierCost: number;
