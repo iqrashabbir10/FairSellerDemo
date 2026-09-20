@@ -392,7 +392,7 @@ export default function SellerProfilePage() {
               <>
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[700px] text-left text-sm">
+                    <table className="w-full min-w-[600px] text-left text-sm">
                       <thead>
                         <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
                           <th className="px-4 py-3 font-medium">Image</th>
@@ -400,7 +400,6 @@ export default function SellerProfilePage() {
                           <th className="px-4 py-3 font-medium">Code</th>
                           <th className="px-4 py-3 font-medium text-right">Base Price</th>
                           <th className="px-4 py-3 font-medium text-right">Seller Price</th>
-                          <th className="px-4 py-3 font-medium text-right">Qty listed</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -411,7 +410,6 @@ export default function SellerProfilePage() {
                             <td className="px-4 py-3 font-mono text-xs text-slate-500">{product.sku || "—"}</td>
                             <td className="px-4 py-3 text-right text-slate-600">${product.supplierCost.toFixed(2)}</td>
                             <td className="px-4 py-3 text-right font-medium text-slate-800">${product.sellingPrice.toFixed(2)}</td>
-                            <td className="px-4 py-3 text-right text-slate-600">{product.quantity}</td>
                           </tr>
                         ))}
                       </tbody>

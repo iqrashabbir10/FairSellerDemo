@@ -6,15 +6,10 @@ import { Check, Eye, EyeOff, KeyRound, ShieldCheck } from "lucide-react";
 import { setNewPassword } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { clearSession, getSession, setSession } from "@/lib/api/session";
+import { homeFor } from "@/lib/api/roles";
 import { Banner, Field, inputClass } from "@/app/components/ProfileUi";
 
-const rules = (value: string) => [
-  { label: "At least 8 characters", ok: value.length >= 8 },
-  { label: "An uppercase letter", ok: /[A-Z]/.test(value) },
-  { label: "A lowercase letter", ok: /[a-z]/.test(value) },
-  { label: "A number", ok: /\d/.test(value) },
-  { label: "A symbol (e.g. ! @ # $)", ok: /[^A-Za-z0-9]/.test(value) },
-];
+const rules = (value: string) => [{ label: "At least 8 characters", ok: value.length >= 8 }];
 
 // Shown after signing in with a temporary password issued by an admin.
 export default function SetPasswordPage() {
@@ -33,7 +28,7 @@ export default function SetPasswordPage() {
       return;
     }
     if (!session.mustChangePassword) {
-      router.replace(session.role === "Admin" ? "/admin/dashboard" : "/seller/dashboard");
+      router.replace(homeFor(session.role));
       return;
     }
     setReady(true);
@@ -52,7 +47,7 @@ export default function SetPasswordPage() {
     try {
       const auth = await setNewPassword({ newPassword: password, confirmPassword: confirm });
       setSession(auth); // fresh tokens, no longer restricted
-      router.replace(auth.role === "Admin" ? "/admin/dashboard" : "/seller/dashboard");
+      router.replace(homeFor(auth.role));
     } catch (err) {
       setError(err instanceof ApiError ? err.errors[0] ?? err.message : "We couldn't save your new password. Please try again.");
       setSaving(false);

@@ -41,7 +41,9 @@ export function NotificationBell() {
   const allHref = role === "Admin" ? "/admin/notifications" : "/seller/notifications";
 
   return (
-    <div ref={rootRef} className="relative">
+    // On phones the wrapper is not the positioning parent, so the panel spans the (sticky) header instead of
+    // hanging off the bell — which sits mid-screen and used to push the panel off the left edge.
+    <div ref={rootRef} className="static sm:relative">
       <button
         onClick={() => setExpanded((v) => !v)}
         aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
@@ -57,7 +59,7 @@ export function NotificationBell() {
       </button>
 
       {expanded && (
-        <div className="absolute right-0 z-50 mt-3 w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-2xl">
+        <div className="absolute inset-x-3 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-2xl sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-3 sm:w-[380px]">
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
             <div className="text-sm font-semibold text-slate-900">
               Notifications {unread > 0 && <span className="ml-1 rounded-full bg-[var(--brand)]/10 px-2 py-0.5 text-xs font-semibold text-[var(--brand)]">{unread} new</span>}
@@ -82,7 +84,7 @@ export function NotificationBell() {
             </div>
           </div>
 
-          <div className="max-h-[420px] overflow-y-auto">
+          <div className="max-h-[min(420px,60vh)] overflow-y-auto">
             {loading ? (
               <div className="space-y-3 p-4" aria-hidden>
                 {[0, 1, 2].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-100" />)}

@@ -22,11 +22,12 @@ export interface PagedRequest {
 
 // ---- Enums ----
 
-export type UserRole = "Seller" | "Admin";
+// A super user is an admin who can also manage the other users.
+export type UserRole = "Seller" | "Admin" | "SuperUser";
 
 export type SellerStatus = "Pending" | "Approved" | "Rejected" | "Frozen";
 
-export type IdentityDocumentType = "CNIC" | "Passport" | "Driving License" | "Other Government ID";
+export type IdentityDocumentType = "ID Card" | "Passport" | "Driving License" | "Other Government ID";
 
 export type OrderStatus =
   | "Pending"
@@ -56,6 +57,26 @@ export type WalletTransactionType =
   | "ProfitCredit"
   | "Withdrawal"
   | "Refund";
+
+// ---- Super user: user management ----
+
+export interface ManagedUserDto {
+  id: string;
+  name: string;
+  email: string;
+  // Highest role the account holds.
+  role: UserRole;
+  isBlocked: boolean;
+  blockedAtUtc: string | null;
+}
+
+export interface CreateManagedUserPayload {
+  fullName: string;
+  email: string;
+  password: string;
+  role: "Admin" | "SuperUser";
+  mustChangePassword: boolean;
+}
 
 // ---- Auth ----
 
@@ -329,9 +350,9 @@ export interface NotificationPushDto {
   unreadCount: number;
 }
 
+// Listing a product is all a seller does — there is no stock quantity.
 export interface AddSellerProductRequest {
   productId: string;
-  quantity: number;
 }
 
 export interface SellerProductDto {
@@ -340,7 +361,6 @@ export interface SellerProductDto {
   productId: string;
   productName: string;
   sku: string;
-  quantity: number;
   supplierCost: number;
   sellingPrice: number;
   imageUrls?: string[];

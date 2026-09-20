@@ -203,6 +203,7 @@ export const onNewMessage = (handler: (message: SupportMessageDto) => void) => s
 export const onConversationStarted = (handler: (conversation: SupportConversationDto) => void) => subscribe("ConversationStarted", handler);
 export const onMessagesRead = (handler: (payload: { conversationId: string; readAtUtc: string }) => void) => subscribe("MessagesRead", handler);
 export const onNotificationReceived = (handler: (payload: NotificationPushDto) => void) => subscribe("NotificationReceived", handler);
+export const onMessageDeleted = (handler: (payload: { conversationId: string; messageId: string }) => void) => subscribe("MessageDeleted", handler);
 export const onMessagesDelivered = (handler: (payload: { conversationId: string; deliveredAtUtc: string }) => void) =>
   subscribe("MessagesDelivered", handler);
 

@@ -2,8 +2,9 @@
 
 import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { CreditCard, House, KeyRound, Menu, MessageSquareText, Package, Settings, ShoppingBag, Tags, Users, WalletCards, X, LogOut } from "lucide-react";
-import { clearSession } from "@/lib/api/session";
+import { CreditCard, House, KeyRound, Menu, MessageSquareText, Package, Settings, ShieldCheck, ShoppingBag, Tags, Users, WalletCards, X, LogOut } from "lucide-react";
+import { clearSession, getSession } from "@/lib/api/session";
+import type { UserRole } from "@/lib/api/types";
 import { keepSupportConnectionAlive, stopSupportConnection } from "@/lib/signalr/supportHub";
 import { logout } from "@/lib/api/auth";
 import { SidebarUser } from "@/app/components/SidebarUser";
@@ -26,8 +27,18 @@ const navigation = [
   { label: "Profile & Password", href: "/admin/profile", icon: Settings },
 ];
 
-function Sidebar({ open, onClose, onLogout }: { open: boolean; onClose: () => void; onLogout: () => void }) {
+// Only super users get this one: create admins / super users and block or unblock anyone's sign-in.
+const userManagementItem = { label: "Users", href: "/admin/users", icon: ShieldCheck };
+
+function navigationFor(role: UserRole) {
+  if (role !== "SuperUser") return navigation;
+  // Sits just above "Profile & Password".
+  return [...navigation.slice(0, -1), userManagementItem, navigation[navigation.length - 1]];
+}
+
+function Sidebar({ open, onClose, onLogout, role }: { open: boolean; onClose: () => void; onLogout: () => void; role: UserRole }) {
   const pathname = usePathname();
+  const items = navigationFor(role);
 
   return (
     <>
@@ -38,7 +49,7 @@ function Sidebar({ open, onClose, onLogout }: { open: boolean; onClose: () => vo
         </div>
 
         <nav className="flex-1 px-3 py-4">
-          {navigation.map(({ label, href, icon: Icon }) => {
+          {items.map(({ label, href, icon: Icon }) => {
             const active = pathname === href;
 
             return (
@@ -59,7 +70,7 @@ function Sidebar({ open, onClose, onLogout }: { open: boolean; onClose: () => vo
           })}
         </nav>
         <div className="border-t border-slate-200 p-3">
-          <SidebarUser role="Admin" />
+          <SidebarUser role={role} />
           <button onClick={onLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-900">
             <LogOut className="h-4 w-4" />
             <span>Logout</span>
@@ -81,7 +92,7 @@ function Sidebar({ open, onClose, onLogout }: { open: boolean; onClose: () => vo
             </div>
 
             <nav className="space-y-1">
-              {navigation.map(({ label, href, icon: Icon }) => {
+              {items.map(({ label, href, icon: Icon }) => {
                 const active = pathname === href;
                 return (
                   <a
@@ -99,7 +110,7 @@ function Sidebar({ open, onClose, onLogout }: { open: boolean; onClose: () => vo
               })}
             </nav>
             <div className="absolute bottom-4 left-3 right-3 border-t border-slate-200 pt-3">
-              <SidebarUser role="Admin" />
+              <SidebarUser role={role} />
               <button onClick={onLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-900"><LogOut className="h-4 w-4" /><span>Logout</span></button>
             </div>
           </div>
@@ -112,6 +123,12 @@ function Sidebar({ open, onClose, onLogout }: { open: boolean; onClose: () => vo
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
+  // Read after mount so the server and first client render agree.
+  const [role, setRole] = useState<UserRole>("Admin");
+  useEffect(() => {
+    const current = getSession()?.role;
+    if (current) setRole(current);
+  }, []);
 
   // Staying connected to the chat hub while signed in is what makes this user show as "online" to the other side.
   useEffect(() => keepSupportConnectionAlive(), []);
@@ -127,7 +144,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <NotificationsProvider role="Admin">
       <div className="min-h-screen bg-[#f6f5f3] text-slate-900">
         <div className="mx-auto flex min-h-screen max-w-[1600px]">
-          <Sidebar open={mobileOpen} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
+          <Sidebar open={mobileOpen} onClose={() => setMobileOpen(false)} onLogout={handleLogout} role={role} />
 
           <div className="flex min-h-screen min-w-0 flex-1 flex-col">
             <header className="sticky top-0 z-30 flex h-16 items-center sm:h-20 justify-between border-b border-slate-200 bg-[var(--brand)] px-5 text-white shadow-sm sm:px-7">

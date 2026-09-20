@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, Minus, Package, Plus, Search, ShoppingCart, Store, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Minus, Plus, Search, ShoppingCart, Store, Trash2 } from "lucide-react";
 import { getAdminSellers, getSellerProducts } from "@/lib/api/admin";
 import { createOrder } from "@/lib/api/orders";
 import { ApiError } from "@/lib/api/client";
@@ -12,6 +12,44 @@ import { Pagination } from "@/app/components/Pagination";
 import { SellerRatingSummary } from "@/app/components/SellerRating";
 
 type CartLine = SellerProductDto & { cartQuantity: number };
+
+// Orders aren't limited by stock. This is only a sanity ceiling that matches the server.
+const MAX_UNITS = 10_000_000;
+
+// A number box that commits on blur/Enter, so typing "250" doesn't create intermediate orders of 2 and 25.
+// Remounted (via key) whenever the quantity changes elsewhere, e.g. from the +/- buttons.
+function QuantityField({ value, onCommit, className = "" }: { value: number; onCommit: (next: number) => void; className?: string }) {
+  const [text, setText] = useState(String(value));
+  const commit = () => {
+    const next = Math.floor(Number(text));
+    if (!Number.isFinite(next) || next < 1) {
+      setText(String(value));
+      return;
+    }
+    const capped = Math.min(next, MAX_UNITS);
+    setText(String(capped));
+    if (capped !== value) onCommit(capped);
+  };
+  return (
+    <input
+      type="number"
+      inputMode="numeric"
+      min={1}
+      max={MAX_UNITS}
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          commit();
+        }
+      }}
+      aria-label="Quantity"
+      className={`rounded-md border border-slate-200 bg-white text-center text-sm font-semibold text-slate-900 outline-none focus:border-[var(--brand)] ${className}`}
+    />
+  );
+}
 
 const money = (value: number) => `$${value.toFixed(2)}`;
 
@@ -158,7 +196,7 @@ export default function SellersProductsPage() {
     setOrderMessage("");
     setCart((current) => {
       if (quantity <= 0) return current.filter((line) => line.id !== product.id);
-      const clamped = Math.min(quantity, product.quantity);
+      const clamped = Math.min(quantity, MAX_UNITS);
       if (current.some((line) => line.id === product.id)) {
         return current.map((line) => (line.id === product.id ? { ...line, cartQuantity: clamped } : line));
       }
@@ -302,10 +340,6 @@ export default function SellersProductsPage() {
                           <div>
                             <h3 className="line-clamp-1 font-semibold text-slate-900">{product.productName}</h3>
                             {product.sku && <p className="font-mono text-xs text-slate-400">{product.sku}</p>}
-                            <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
-                              <Package className="h-3.5 w-3.5" />
-                              {product.quantity} listed
-                            </p>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div className="rounded-xl bg-slate-50 px-3 py-2">
@@ -323,16 +357,15 @@ export default function SellersProductsPage() {
                                 <button onClick={() => setLineQuantity(product, inCart - 1)} className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--brand)] hover:bg-white" aria-label="Decrease quantity">
                                   <Minus className="h-4 w-4" />
                                 </button>
-                                <span className="text-sm font-semibold text-slate-900">{inCart} in cart</span>
-                                <button onClick={() => setLineQuantity(product, inCart + 1)} disabled={inCart >= product.quantity} className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--brand)] hover:bg-white disabled:opacity-40" aria-label="Increase quantity">
+                                <QuantityField key={inCart} value={inCart} onCommit={(next) => setLineQuantity(product, next)} className="h-8 w-24" />
+                                <button onClick={() => setLineQuantity(product, inCart + 1)} className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--brand)] hover:bg-white" aria-label="Increase quantity">
                                   <Plus className="h-4 w-4" />
                                 </button>
                               </div>
                             ) : (
                               <button
                                 onClick={() => setLineQuantity(product, 1)}
-                                disabled={product.quantity <= 0}
-                                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[var(--brand-hover)] disabled:opacity-50"
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[var(--brand-hover)]"
                               >
                                 <ShoppingCart className="h-4 w-4" />
                                 Add to cart
@@ -392,8 +425,8 @@ export default function SellersProductsPage() {
                         <button onClick={() => setLineQuantity(line, line.cartQuantity - 1)} className="flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50" aria-label="Decrease quantity">
                           <Minus className="h-3 w-3" />
                         </button>
-                        <span className="w-7 text-center text-sm font-medium">{line.cartQuantity}</span>
-                        <button onClick={() => setLineQuantity(line, line.cartQuantity + 1)} disabled={line.cartQuantity >= line.quantity} className="flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40" aria-label="Increase quantity">
+                        <QuantityField key={line.cartQuantity} value={line.cartQuantity} onCommit={(next) => setLineQuantity(line, next)} className="h-6 w-16" />
+                        <button onClick={() => setLineQuantity(line, line.cartQuantity + 1)} className="flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50" aria-label="Increase quantity">
                           <Plus className="h-3 w-3" />
                         </button>
                       </div>

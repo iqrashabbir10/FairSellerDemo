@@ -232,6 +232,10 @@ export async function sendAdminSupportMessage(conversationId: string, message: s
   });
 }
 
+export function deleteAdminSupportMessage(conversationId: string, messageId: string) {
+  return apiFetch<unknown>(`/api/admin/support/${conversationId}/messages/${messageId}`, { method: "DELETE" });
+}
+
 export function getInviteCodes(request?: PagedRequest) {
   return apiFetch<PagedResult<InviteCodeDto>>("/api/admin/invite-codes", { query: toPagedQuery(request) });
 }

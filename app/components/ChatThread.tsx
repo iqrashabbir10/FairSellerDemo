@@ -13,8 +13,6 @@ const NEAR_BOTTOM_PX = 96;
 
 type Thread = ReturnType<typeof useChatThread>;
 
-const formatTime = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-
 function dayLabel(iso: string) {
   const date = new Date(iso);
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -48,6 +46,7 @@ const Bubble = memo(function Bubble({
   onRetry,
   onDiscard,
   onReply,
+  onDelete,
   onJump,
 }: {
   item: ChatMessage;
@@ -57,6 +56,8 @@ const Bubble = memo(function Bubble({
   onRetry: (id: string) => void;
   onDiscard: (id: string) => void;
   onReply: (item: ChatMessage) => void;
+  /** Set only when the viewer may delete (admins), for their own messages and the other side's alike. */
+  onDelete?: (id: string) => void;
   onJump: (id: string) => void;
 }) {
   const status = deliveryStatus(item);
@@ -68,7 +69,6 @@ const Bubble = memo(function Bubble({
         <div className="flex max-w-[80%] items-center gap-1.5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-3.5 py-2 text-sm italic text-slate-400 sm:max-w-[70%]">
           <Ban className="h-3.5 w-3.5 shrink-0" />
           This message was deleted
-          <span className="ml-1 text-[10px] not-italic">{formatTime(item.createdAtUtc)}</span>
         </div>
       </div>
     );
@@ -79,6 +79,11 @@ const Bubble = memo(function Bubble({
       <button type="button" onClick={() => onReply(item)} title="Reply" aria-label="Reply to this message" className="rounded-full p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700">
         <Reply className="h-3.5 w-3.5" />
       </button>
+      {onDelete && (
+        <button type="button" onClick={() => onDelete(item.id)} title="Delete for everyone" aria-label="Delete this message" className="rounded-full p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   );
 
@@ -90,10 +95,11 @@ const Bubble = memo(function Bubble({
           {item.replyTo && <QuoteBlock reply={item.replyTo} mine={mine} userId={userId} title={title} onJump={onJump} />}
           <ChatAttachmentBubble item={item} mine={mine} />
           {item.message && <p className="whitespace-pre-wrap break-words">{item.message}</p>}
-          <div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-white/80" : "text-slate-400"}`}>
-            {formatTime(item.createdAtUtc)}
-            {mine && <MessageStatusTicks status={status} className="text-white/80" />}
-          </div>
+          {mine && (
+            <div className="mt-1 flex items-center justify-end gap-1">
+              <MessageStatusTicks status={status} className="text-white/80" />
+            </div>
+          )}
         </div>
         {status === "failed" && (
           <div className="mt-1 flex flex-wrap items-center justify-end gap-2 text-xs text-red-600">
@@ -133,7 +139,7 @@ export function ChatThread({
   emptyText?: string;
   onBack?: () => void;
 }) {
-  const { messages, loading, loadingOlder, hasMore, error, connection, loadOlder, send, retry, discard } = thread;
+  const { messages, loading, loadingOlder, hasMore, error, connection, loadOlder, send, retry, discard, canDelete, deleteMessage } = thread;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -148,6 +154,18 @@ export function ChatThread({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+    if (!confirmDeleteId) return;
+    setDeleting(true);
+    const problem = await deleteMessage(confirmDeleteId);
+    setDeleting(false);
+    if (problem) setComposeError(problem);
+    if (replyTo?.id === confirmDeleteId) setReplyTo(null);
+    setConfirmDeleteId(null);
+  };
 
   const startReply = useCallback((item: ChatMessage) => {
     setReplyTo(item);
@@ -357,6 +375,7 @@ export function ChatThread({
                   onRetry={retry}
                   onDiscard={discard}
                   onReply={startReply}
+                  onDelete={canDelete ? setConfirmDeleteId : undefined}
                   onJump={jumpTo}
                 />
               )
@@ -452,6 +471,23 @@ export function ChatThread({
         </div>
         {text.length > MAX_LENGTH - 300 && <div className="mt-1 text-right text-[11px] text-slate-400">{text.length}/{MAX_LENGTH}</div>}
       </form>
+
+      {confirmDeleteId && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-label="Delete message">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="text-base font-semibold text-slate-900">Delete this message?</h3>
+            <p className="mt-1 text-sm text-slate-500">It will be removed for everyone in this conversation, including any attached file. This can&apos;t be undone.</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setConfirmDeleteId(null)} disabled={deleting} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50">
+                Cancel
+              </button>
+              <button onClick={confirmDelete} disabled={deleting} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {dragging && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-2xl border-2 border-dashed border-[var(--brand)] bg-white/80 text-sm font-semibold text-[var(--brand)]">

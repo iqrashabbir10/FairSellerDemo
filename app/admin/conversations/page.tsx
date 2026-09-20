@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
-import { getAdminSupportConversations, getAdminSupportMessages, markAdminSupportMessagesRead, sendAdminSupportMessage } from "@/lib/api/admin";
+import { deleteAdminSupportMessage, getAdminSupportConversations, getAdminSupportMessages, markAdminSupportMessagesRead, sendAdminSupportMessage } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { getSession } from "@/lib/api/session";
 import { onConversationStarted, onNewMessage, onReconnected, watchSellerPresence } from "@/lib/signalr/supportHub";
@@ -18,12 +18,13 @@ const adminChatApi: ChatApi = {
   getMessages: getAdminSupportMessages,
   markRead: markAdminSupportMessagesRead,
   send: sendAdminSupportMessage,
+  remove: deleteAdminSupportMessage,
 };
 
 function formatListTime(iso: string) {
   const date = new Date(iso);
   const now = new Date();
-  if (date.toDateString() === now.toDateString()) return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (date.toDateString() === now.toDateString()) return "Today";
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   if (date.toDateString() === yesterday.toDateString()) return "Yesterday";

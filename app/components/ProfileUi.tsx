@@ -57,13 +57,7 @@ export function ChangePasswordForm() {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
 
-  const rules = [
-    { label: "At least 8 characters", ok: next.length >= 8 },
-    { label: "An uppercase letter", ok: /[A-Z]/.test(next) },
-    { label: "A lowercase letter", ok: /[a-z]/.test(next) },
-    { label: "A number", ok: /\d/.test(next) },
-    { label: "A symbol (e.g. ! @ # $)", ok: /[^A-Za-z0-9]/.test(next) },
-  ];
+  const rules = [{ label: "At least 8 characters", ok: next.length >= 8 }];
   const strong = rules.every((r) => r.ok);
   const matches = next.length > 0 && next === confirm;
   const different = next !== current;

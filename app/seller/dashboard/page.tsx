@@ -10,8 +10,6 @@ import { useAuthGuard } from "@/lib/api/useAuthGuard";
 import { ProductThumbnail } from "@/app/components/ProductThumbnail";
 import { ColorPanel, CreditScoreCard, GradientStatCard, RatingCard, SalesOverviewCard, countByGroup, groupStatus } from "@/app/components/DashboardCards";
 
-// A listing counts as "running low" when fewer than this many units are left.
-const LOW_QUANTITY = 5;
 const PAGE = 100;
 const MAX_PAGES = 20;
 
@@ -97,10 +95,8 @@ export default function SellerDashboardPage() {
     return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
   }, [catalog, listings]);
 
-  const lowStock = useMemo(
-    () => listings.filter((l) => l.quantity < LOW_QUANTITY).sort((a, b) => a.quantity - b.quantity).slice(0, 6),
-    [listings],
-  );
+  // The API returns listings newest first.
+  const latestListings = useMemo(() => listings.slice(0, 6), [listings]);
   const recentOrders = useMemo(() => [...orders].sort((a, b) => b.createdAtUtc.localeCompare(a.createdAtUtc)).slice(0, 5), [orders]);
 
   if (!ready) return null;
@@ -152,7 +148,7 @@ export default function SellerDashboardPage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <GradientStatCard label="Total products" value={listings.length.toLocaleString()} icon={Package} gradient="green" href="/seller/my-listings" foot={<span>{lowStock.length} running low</span>} />
+            <GradientStatCard label="Total products" value={listings.length.toLocaleString()} icon={Package} gradient="green" href="/seller/my-listings" foot={<span>Listed for sale</span>} />
             <GradientStatCard label="Total orders" value={(dashboard?.totalOrders ?? orders.length).toLocaleString()} icon={ShoppingCart} gradient="blue" href="/seller/orders" foot={<span>{dashboard?.pendingOrders ?? stats.all.New} pending</span>} />
             <GradientStatCard label="Wallet balance" value={money(dashboard?.walletBalance ?? 0)} icon={Wallet} gradient="amber" href="/seller/wallet" foot={<span>{dashboard?.pendingWithdrawals ?? 0} pending withdrawals</span>} />
             <GradientStatCard label="Total sales" value={money(stats.totalSales)} icon={CircleDollarSign} gradient="pink" foot={<span>Expected profit {money(dashboard?.expectedProfitTotal ?? 0)}</span>} />
@@ -246,28 +242,26 @@ export default function SellerDashboardPage() {
             </ColorPanel>
 
             <ColorPanel
-              title="Running low"
+              title="Recently added products"
               accent="bg-amber-500"
               action={<Link href="/seller/my-listings" className="inline-flex items-center gap-1 text-sm font-medium text-[var(--brand)] hover:underline">My listings <ArrowRight className="h-3.5 w-3.5" /></Link>}
             >
-              {lowStock.length > 0 ? (
+              {latestListings.length > 0 ? (
                 <div className="space-y-3">
-                  {lowStock.map((item) => (
+                  {latestListings.map((item) => (
                     <div key={item.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                       <ProductThumbnail name={item.productName} imageUrls={item.imageUrls} className="h-12 w-12 shrink-0" bare />
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium text-slate-800">{item.productName}</div>
                         {item.sku && <div className="font-mono text-xs text-slate-400">{item.sku}</div>}
                       </div>
-                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${item.quantity === 0 ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"}`}>
-                        {item.quantity === 0 ? "Out" : `${item.quantity} left`}
-                      </span>
+                      <span className="shrink-0 text-sm font-semibold text-slate-800">{money(item.sellingPrice)}</span>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
-                  Nothing is running low — every listing has {LOW_QUANTITY} or more units.
+                  You haven&apos;t added any products yet. Go to Products and add some to your listings.
                 </div>
               )}
             </ColorPanel>

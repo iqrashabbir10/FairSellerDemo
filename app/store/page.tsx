@@ -35,8 +35,6 @@ const LIST_PRODUCTS: Product[] = [
     p("Longines Master Collection", 1499.99, "mens-watches/longines-master-collection"),
     p("Heshe Women's Leather Bag", 129.99, "womens-bags/heshe-women's-leather-bag"),
     p("Beats Flex Wireless Earphones", 45.99, "mobile-accessories/beats-flex-wireless-earphones", 49.99),
-    p("Classic Sun Glasses", 24.99, "sunglasses/classic-sun-glasses"),
-    p("Apple Airpods", 129.99, "mobile-accessories/apple-airpods"),
   ];
 
 const LATEST: Product[] = [
@@ -44,10 +42,6 @@ const LATEST: Product[] = [
     p("Apple Airpods", 129.99, "mobile-accessories/apple-airpods"),
     p("Rolex Cellini Date Black Dial", 8999.99, "mens-watches/rolex-cellini-date-black-dial"),
     p("Black Women's Gown", 116.37, "womens-dresses/black-women's-gown", 129.99),
-    p("Nike Air Jordan 1 Red And Black", 149.99, "mens-shoes/nike-air-jordan-1-red-and-black"),
-    p("Prada Women Bag", 599.99, "womens-bags/prada-women-bag"),
-    p("Annibale Colombo Sofa", 2139.99, "furniture/annibale-colombo-sofa", 2499.99),
-    p("Black Sun Glasses", 29.99, "sunglasses/black-sun-glasses"),
   ];
 
 const CATEGORY_TILES = [
@@ -68,11 +62,7 @@ const CATEGORY_SECTIONS: { title: string; items: Product[] }[] = [
       p("Blue & Black Check Shirt", 29.99, "mens-shirts/blue-&-black-check-shirt"),
       p("Gigabyte Aorus Men Tshirt", 22.99, "mens-shirts/gigabyte-aorus-men-tshirt", 24.99),
       p("Man Plaid Shirt", 34.99, "mens-shirts/man-plaid-shirt"),
-      p("Man Short Sleeve Shirt", 19.99, "mens-shirts/man-short-sleeve-shirt"),
-      p("Men Check Shirt", 24.8, "mens-shirts/men-check-shirt", 27.99),
       p("Nike Air Jordan 1 Red And Black", 149.99, "mens-shoes/nike-air-jordan-1-red-and-black"),
-      p("Nike Baseball Cleats", 79.99, "mens-shoes/nike-baseball-cleats"),
-      p("Puma Future Rider Trainers", 82.79, "mens-shoes/puma-future-rider-trainers", 89.99),
     ],
   },
   {
@@ -82,10 +72,6 @@ const CATEGORY_SECTIONS: { title: string; items: Product[] }[] = [
       p("Heshe Women's Leather Bag", 129.99, "womens-bags/heshe-women's-leather-bag"),
       p("Prada Women Bag", 515.45, "womens-bags/prada-women-bag", 599.99),
       p("White Faux Leather Backpack", 39.99, "womens-bags/white-faux-leather-backpack"),
-      p("Women Handbag Black", 59.99, "womens-bags/women-handbag-black"),
-      p("Black Sun Glasses", 27.59, "sunglasses/black-sun-glasses", 29.99),
-      p("Classic Sun Glasses", 24.99, "sunglasses/classic-sun-glasses"),
-      p("Green and Black Glasses", 34.99, "sunglasses/green-and-black-glasses"),
     ],
   },
   {
@@ -94,11 +80,7 @@ const CATEGORY_SECTIONS: { title: string; items: Product[] }[] = [
       p("Black Women's Gown", 116.37, "womens-dresses/black-women's-gown", 129.99),
       p("Corset Leather With Skirt", 89.99, "womens-dresses/corset-leather-with-skirt"),
       p("Corset With Black Skirt", 79.99, "womens-dresses/corset-with-black-skirt"),
-      p("Dress Pea", 41.15, "womens-dresses/dress-pea", 49.99),
-      p("Marni Red & Black Suit", 179.99, "womens-dresses/marni-red-&-black-suit"),
       p("Blue Frock", 29.99, "tops/blue-frock"),
-      p("Girl Summer Dress", 16.15, "tops/girl-summer-dress", 19.99),
-      p("Gray Dress", 34.99, "tops/gray-dress"),
     ],
   },
   {
@@ -106,12 +88,8 @@ const CATEGORY_SECTIONS: { title: string; items: Product[] }[] = [
     items: [
       p("Apple MacBook Pro 14 Inch Space Grey", 1999.99, "laptops/apple-macbook-pro-14-inch-space-grey"),
       p("Asus Zenbook Pro Dual Screen Laptop", 1599.47, "laptops/asus-zenbook-pro-dual-screen-laptop", 1799.99),
-      p("Huawei Matebook X Pro", 1399.99, "laptops/huawei-matebook-x-pro"),
-      p("Lenovo Yoga 920", 1099.99, "laptops/lenovo-yoga-920"),
-      p("New DELL XPS 13 9300 Laptop", 1321.64, "laptops/new-dell-xps-13-9300-laptop", 1499.99),
       p("iPhone 5s", 199.99, "smartphones/iphone-5s"),
       p("iPhone 13 Pro", 1099.99, "smartphones/iphone-13-pro"),
-      p("Oppo A57", 229.99, "smartphones/oppo-a57", 249.99),
     ],
   },
   {
@@ -121,23 +99,6 @@ const CATEGORY_SECTIONS: { title: string; items: Product[] }[] = [
       p("Apple AirPods Max Silver", 549.99, "mobile-accessories/apple-airpods-max-silver"),
       p("Beats Flex Wireless Earphones", 45.99, "mobile-accessories/beats-flex-wireless-earphones", 49.99),
       p("Apple HomePod Mini Cosmic Grey", 99.99, "mobile-accessories/apple-homepod-mini-cosmic-grey"),
-      p("Amazon Echo Plus", 99.99, "mobile-accessories/amazon-echo-plus"),
-      p("Apple Watch Series 4 Gold", 307.92, "mobile-accessories/apple-watch-series-4-gold", 349.99),
-      p("Apple Airpower Wireless Charger", 79.99, "mobile-accessories/apple-airpower-wireless-charger"),
-      p("Apple MagSafe Battery Pack", 99.99, "mobile-accessories/apple-magsafe-battery-pack"),
-    ],
-  },
-  {
-    title: "Automotive",
-    items: [
-      p("300 Touring", 26679.99, "vehicle/300-touring", 28999.99),
-      p("Charger SXT RWD", 32999.99, "vehicle/charger-sxt-rwd"),
-      p("Dodge Hornet GT Plus", 24999.99, "vehicle/dodge-hornet-gt-plus"),
-      p("Durango SXT RWD", 30917.19, "vehicle/durango-sxt-rwd", 36999.99),
-      p("Pacifica Touring", 31999.99, "vehicle/pacifica-touring"),
-      p("Generic Motorcycle", 3999.99, "motorcycle/generic-motorcycle"),
-      p("Kawasaki Z800", 8120.69, "motorcycle/kawasaki-z800", 8999.99),
-      p("MotoGP CI.H1", 14999.99, "motorcycle/motogp-ci.h1"),
     ],
   },
   {
@@ -146,37 +107,7 @@ const CATEGORY_SECTIONS: { title: string; items: Product[] }[] = [
       p("Essence Mascara Lash Princess", 9.99, "beauty/essence-mascara-lash-princess"),
       p("Eyeshadow Palette with Mirror", 16.35, "beauty/eyeshadow-palette-with-mirror", 19.99),
       p("Powder Canister", 14.99, "beauty/powder-canister"),
-      p("Red Lipstick", 12.99, "beauty/red-lipstick"),
-      p("Red Nail Polish", 7.96, "beauty/red-nail-polish", 8.99),
       p("Calvin Klein CK One", 49.99, "fragrances/calvin-klein-ck-one"),
-      p("Chanel Coco Noir Eau De", 129.99, "fragrances/chanel-coco-noir-eau-de"),
-      p("Dior J'adore", 76.74, "fragrances/dior-j'adore", 89.99),
-    ],
-  },
-  {
-    title: "Groceries",
-    items: [
-      p("Apple", 1.99, "groceries/apple"),
-      p("Beef Steak", 12.99, "groceries/beef-steak"),
-      p("Eggs", 2.66, "groceries/eggs", 2.99),
-      p("Honey Jar", 6.99, "groceries/honey-jar"),
-      p("Milk", 3.49, "groceries/milk"),
-      p("Nescafe Coffee", 7.35, "groceries/nescafe-coffee", 7.99),
-      p("Rice", 5.99, "groceries/rice"),
-      p("Strawberry", 3.99, "groceries/strawberry"),
-    ],
-  },
-  {
-    title: "Home & Furniture",
-    items: [
-      p("Annibale Colombo Bed", 1737.16, "furniture/annibale-colombo-bed", 1899.99),
-      p("Annibale Colombo Sofa", 2499.99, "furniture/annibale-colombo-sofa"),
-      p("Bedside Table African Cherry", 299.99, "furniture/bedside-table-african-cherry"),
-      p("Knoll Saarinen Executive Conference Chair", 459.99, "furniture/knoll-saarinen-executive-conference-chair", 499.99),
-      p("Wooden Bathroom Sink With Mirror", 799.99, "furniture/wooden-bathroom-sink-with-mirror"),
-      p("Decoration Swing", 59.99, "home-decoration/decoration-swing"),
-      p("Family Tree Photo Frame", 25.53, "home-decoration/family-tree-photo-frame", 29.99),
-      p("House Showpiece Plant", 39.99, "home-decoration/house-showpiece-plant"),
     ],
   },
   {
@@ -186,15 +117,24 @@ const CATEGORY_SECTIONS: { title: string; items: Product[] }[] = [
       p("Basketball", 13.79, "sports-accessories/basketball", 14.99),
       p("Cricket Bat", 29.99, "sports-accessories/cricket-bat"),
       p("Tennis Racket", 49.99, "sports-accessories/tennis-racket"),
-      p("Volleyball", 10.52, "sports-accessories/volleyball", 11.99),
-      p("Baseball Glove", 24.99, "sports-accessories/baseball-glove"),
-      p("Iron Golf", 49.99, "sports-accessories/iron-golf"),
-      p("American Football", 18.39, "sports-accessories/american-football", 19.99),
     ],
   },
 ];
 
-const BRANDS = ["Toyota", "Samsung", "Sony", "Xiaomi", "Yamaha", "Volvo", "Puma", "Audi"];
+const BRANDS = [
+  { name: "Nike", type: "Clothing" },
+  { name: "Levi's", type: "Clothing" },
+  { name: "Ralph Lauren", type: "Clothing" },
+  { name: "Calvin Klein", type: "Clothing" },
+  { name: "Under Armour", type: "Clothing" },
+  { name: "Gap", type: "Clothing" },
+  { name: "Apple", type: "Electronics" },
+  { name: "Dell", type: "Electronics" },
+  { name: "HP", type: "Electronics" },
+  { name: "Microsoft", type: "Electronics" },
+  { name: "Bose", type: "Audio" },
+  { name: "Amazon", type: "Devices" },
+];
 
 const SLIDES = [
   { kicker: "Mega Sale", title: "Up to 40% off electronics", cta: "Shop deals", gradient: "from-[#E6302D] to-[#FF7A45]" },
@@ -221,6 +161,19 @@ const SearchIcon = ({ className = "h-5 w-5" }: IconProps) => (
   <svg viewBox="0 0 24 24" className={className} {...svgProps}>
     <circle cx="11" cy="11" r="7" />
     <path d="m21 21-4.3-4.3" />
+  </svg>
+);
+const LockIcon = ({ className = "h-6 w-6" }: IconProps) => (
+  <svg viewBox="0 0 24 24" className={className} {...svgProps}>
+    <rect x="4" y="11" width="16" height="10" rx="2" />
+    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    <circle cx="12" cy="16" r="1" />
+  </svg>
+);
+const ArrowRightIcon = ({ className = "h-4 w-4" }: IconProps) => (
+  <svg viewBox="0 0 24 24" className={className} {...svgProps}>
+    <path d="M5 12h14" />
+    <path d="m13 6 6 6-6 6" />
   </svg>
 );
 const TruckIcon = ({ className = "h-7 w-7" }: IconProps) => (
@@ -384,7 +337,7 @@ function ListSection({ title, icon, items, badge }: { title: string; icon?: Reac
     <section className="bg-white" aria-label={title}>
       <Reveal className="mx-auto max-w-[1280px] px-4 py-5">
         <SectionTitle title={title} icon={icon} />
-        <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3 [&::-webkit-scrollbar]:hidden">
+        <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4 [&::-webkit-scrollbar]:hidden">
           {items.map((product) => (
             <ListCard key={product.name} product={product} badge={badge} />
           ))}
@@ -511,14 +464,64 @@ function HeroSlider() {
   );
 }
 
+// A friendly call-to-action under the slider that leads sellers and admins to the login page.
+function LoginTile() {
+  const perks = ["Manage your products", "Track your orders", "Withdraw your earnings"];
+  return (
+    <section className="bg-white" aria-label="Sign in">
+      <Reveal className="mx-auto max-w-[1280px] px-4 py-5">
+        <div className="relative overflow-hidden rounded-2xl border border-[#F3C9C7] bg-gradient-to-br from-[#FFF4F2] via-white to-[#FDECEE] p-5 shadow-sm sm:p-7">
+          <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[#E6302D]/10" aria-hidden="true" />
+          <div className="pointer-events-none absolute -bottom-14 right-24 h-36 w-36 rounded-full bg-[#FF7A45]/10" aria-hidden="true" />
+
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#E6302D] to-[#FF7A45] text-white shadow-lg shadow-[#E6302D]/30">
+                <LockIcon className="h-7 w-7" />
+              </span>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#E6302D]">Sellers &amp; admins</p>
+                <h2 className="mt-1 text-xl font-extrabold leading-tight text-[#1E2230] sm:text-2xl">Already selling with WayFair?</h2>
+                <p className="mt-1 max-w-xl text-sm text-[#6B7280]">Sign in to your account to pick up where you left off.</p>
+                <ul className="mt-3 flex flex-wrap gap-2">
+                  {perks.map((perk) => (
+                    <li key={perk} className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#1E2230] ring-1 ring-[#E6E9F2]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#E6302D]" aria-hidden="true" />
+                      {perk}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
+              <Link
+                href="/"
+                className={`group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#E6302D] px-8 text-base font-bold text-white shadow-lg shadow-[#E6302D]/25 transition hover:bg-[#C92320] active:scale-95 motion-reduce:transition-none ${FOCUS}`}
+              >
+                Login
+                <ArrowRightIcon className="h-5 w-5 transition-transform group-hover:translate-x-1 motion-reduce:transition-none" />
+              </Link>
+              <p className="text-center text-xs text-[#6B7280] sm:text-right">
+                New here?{" "}
+                <Link href="/auth/seller-register" className={`rounded font-semibold text-[#E6302D] hover:underline ${FOCUS}`}>
+                  Register your store
+                </Link>
+              </p>
+            </div>
+          </div>
+        </div>
+      </Reveal>
+    </section>
+  );
+}
+
 /* ----------------------------------------------------------------------------------------------
  * Page
  * -------------------------------------------------------------------------------------------- */
 
 export default function StorePage() {
-  const newArrivals = [...LIST_PRODUCTS].reverse();
-  const bestSelling = [LIST_PRODUCTS[1], LIST_PRODUCTS[3], LIST_PRODUCTS[0], LIST_PRODUCTS[5], LIST_PRODUCTS[4], LIST_PRODUCTS[2]];
-  const topRated = [LIST_PRODUCTS[2], LIST_PRODUCTS[4], LIST_PRODUCTS[5], LIST_PRODUCTS[1], LIST_PRODUCTS[0], LIST_PRODUCTS[3]];
+  const bestSelling = [LIST_PRODUCTS[1], LIST_PRODUCTS[3], LIST_PRODUCTS[0], LIST_PRODUCTS[2]];
   const recommendedBadge = discountLabel(RECOMMENDED);
 
   return (
@@ -527,6 +530,8 @@ export default function StorePage() {
 
       <main className="space-y-2.5 pb-2.5">
         <HeroSlider />
+
+        <LoginTile />
 
         {/* Categories */}
         <section className="bg-white" aria-label="Shop by category">
@@ -575,9 +580,7 @@ export default function StorePage() {
           </Reveal>
         </section>
 
-        <ListSection title="New Arrivals" items={newArrivals} badge="New" />
         <ListSection title="Best Sellings" icon={<span className="text-[#F5B301]"><TrophyIcon /></span>} items={bestSelling} />
-        <ListSection title="Top Rated" items={topRated} />
 
         {/* Home decor banner */}
         <section className="bg-white" aria-label="Home décor promotion">
@@ -606,8 +609,13 @@ export default function StorePage() {
             <div className="ez-marquee-wrap overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
               <ul className="ez-marquee flex w-max gap-4">
                 {[...BRANDS, ...BRANDS].map((brand, i) => (
-                  <li key={`${brand}-${i}`} aria-hidden={i >= BRANDS.length} className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-[#E6E9F2] bg-white text-center text-[11px] font-extrabold uppercase tracking-wide text-[#1E2230] shadow-sm">
-                    {brand}
+                  <li
+                    key={`${brand.name}-${i}`}
+                    aria-hidden={i >= BRANDS.length}
+                    className="flex h-24 w-24 shrink-0 flex-col items-center justify-center gap-0.5 rounded-full border border-[#E6E9F2] bg-white px-2 text-center shadow-sm"
+                  >
+                    <span className="text-[11px] font-extrabold uppercase leading-tight tracking-wide text-[#1E2230]">{brand.name}</span>
+                    <span className="text-[9px] font-semibold uppercase tracking-wider text-[#6B7280]">{brand.type}</span>
                   </li>
                 ))}
               </ul>
@@ -704,7 +712,7 @@ export default function StorePage() {
           }
         }
         .ez-marquee {
-          animation: ez-marquee 26s linear infinite;
+          animation: ez-marquee 36s linear infinite;
         }
         .ez-marquee-wrap:hover .ez-marquee {
           animation-play-state: paused;

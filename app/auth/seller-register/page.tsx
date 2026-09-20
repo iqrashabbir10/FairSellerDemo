@@ -17,7 +17,7 @@ const steps = [
 ];
 
 const CATEGORIES = ["Home & Living", "Electronics", "Fashion", "Beauty", "Sports", "Fitness", "Books & Stationery", "Toys & Kids", "Other"];
-const ID_TYPES: IdentityDocumentType[] = ["CNIC", "Passport", "Driving License", "Other Government ID"];
+const ID_TYPES: IdentityDocumentType[] = ["ID Card", "Passport", "Driving License", "Other Government ID"];
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = ["png", "jpg", "jpeg", "pdf"];
@@ -45,18 +45,12 @@ const initialForm: FormState = {
   inviteCode: "",
   shopName: "",
   shopCategory: CATEGORIES[0],
-  idType: "CNIC",
+  idType: "ID Card",
   idNumber: "",
   termsAccepted: false,
 };
 
-const passwordRules = (value: string) => [
-  { label: "At least 8 characters", ok: value.length >= 8 },
-  { label: "An uppercase letter", ok: /[A-Z]/.test(value) },
-  { label: "A lowercase letter", ok: /[a-z]/.test(value) },
-  { label: "A number", ok: /\d/.test(value) },
-  { label: "A symbol (e.g. ! @ # $)", ok: /[^A-Za-z0-9]/.test(value) },
-];
+const passwordRules = (value: string) => [{ label: "At least 8 characters", ok: value.length >= 8 }];
 
 const formatBytes = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`);
 
@@ -76,7 +70,7 @@ function validateStep(step: number, form: FormState, file: File | null, phoneVal
     if (!form.fullName.trim()) errors.fullName = "Please enter your full name.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors.email = "Enter a valid email address, like you@example.com.";
     if (!phoneValid) errors.phoneNumber = "Enter a valid phone number for the selected country.";
-    if (!passwordRules(form.password).every((r) => r.ok)) errors.password = "Your password doesn't meet all the requirements yet.";
+    if (!passwordRules(form.password).every((r) => r.ok)) errors.password = "Your password must be at least 8 characters.";
     if (form.confirmPassword !== form.password) errors.confirmPassword = "The two passwords don't match.";
   }
   if (step === 1) {

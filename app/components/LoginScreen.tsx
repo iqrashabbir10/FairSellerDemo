@@ -7,6 +7,7 @@ import { login } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { clearSession, getSession, setSession } from "@/lib/api/session";
 import { getSellerProfile } from "@/lib/api/seller";
+import { homeFor } from "@/lib/api/roles";
 
 const PENDING_MESSAGES: Record<string, string> = {
   Pending: "Your seller application is still being reviewed. You'll be able to sign in once an admin approves it.",
@@ -21,7 +22,10 @@ function friendlyLoginError(err: unknown) {
       // Lockout has its own wording from the server; everything else is a credentials problem.
       return /too many/i.test(err.message) ? err.message : "Incorrect email or password. Please check your details and try again.";
     }
-    if (err.status === 403) return "This account doesn't have access to sign in. Please contact support.";
+    if (err.status === 403) {
+      // A blocked account gets its own explanation from the server.
+      return /blocked/i.test(err.message) ? err.message : "This account doesn't have access to sign in. Please contact support.";
+    }
     if (err.status >= 500) return "Something went wrong on our side. Please try again in a moment.";
   }
   return "Unable to sign in. Please try again.";
@@ -46,8 +50,7 @@ export function LoginScreen() {
       router.push("/auth/set-password");
       return;
     }
-    if (session?.role === "Admin") router.push("/admin/dashboard");
-    if (session?.role === "Seller") router.push("/seller/dashboard");
+    if (session) router.push(homeFor(session.role));
   }, [router]);
 
   const submit = async (event: React.FormEvent) => {
@@ -79,7 +82,7 @@ export function LoginScreen() {
         }
       }
 
-      router.push(auth.role === "Admin" ? "/admin/dashboard" : "/seller/dashboard");
+      router.push(homeFor(auth.role));
     } catch (err) {
       setError(friendlyLoginError(err));
     } finally {
