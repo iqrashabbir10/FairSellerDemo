@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { deleteSellerSupportMessage, createSellerSupportConversation, getSellerSupportConversations, getSellerSupportMessages, markSellerSupportMessagesRead, sendSellerSupportMessage } from "@/lib/api/seller";
+import { createSellerSupportConversation, getSellerSupportConversations, getSellerSupportMessages, markSellerSupportMessagesRead, sendSellerSupportMessage } from "@/lib/api/seller";
 import { ApiError } from "@/lib/api/client";
 import { getSession } from "@/lib/api/session";
 import { watchSupportAgentsPresence } from "@/lib/signalr/supportHub";
@@ -13,7 +13,6 @@ const sellerChatApi: ChatApi = {
   getMessages: getSellerSupportMessages,
   markRead: markSellerSupportMessagesRead,
   send: sendSellerSupportMessage,
-  remove: deleteSellerSupportMessage,
 };
 
 export default function SellerConversationsPage() {
@@ -68,7 +67,7 @@ export default function SellerConversationsPage() {
           thread={thread}
           userId={userId}
           title="Support Team"
-          subtitle="WayFeir support"
+          subtitle="WayFair support"
           online={supportOnline}
           disabledReason={loading ? "Loading conversation…" : !conversationId ? "Conversation unavailable" : undefined}
           emptyText="Send a message to start the conversation."

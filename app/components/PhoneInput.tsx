@@ -29,7 +29,7 @@ interface CountryOption {
   dial: string;
 }
 
-function buildCountries(): CountryOption[] {
+function buildCountries(exclude: readonly CountryCode[]): CountryOption[] {
   let names: Intl.DisplayNames | null = null;
   try {
     names = new Intl.DisplayNames([typeof navigator !== "undefined" ? navigator.language : "en"], { type: "region" });
@@ -37,6 +37,7 @@ function buildCountries(): CountryOption[] {
     names = null;
   }
   return getCountries()
+    .filter((code) => !exclude.includes(code))
     .map((code) => ({ code, name: names?.of(code) ?? code, dial: `+${getCountryCallingCode(code)}` }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -49,16 +50,22 @@ const exampleFor = (country: CountryCode) => getExampleNumber(country, examples)
  */
 export function PhoneInput({
   id,
-  defaultCountry = "PK",
+  defaultCountry = "US",
+  excludeCountries,
   onChange,
   invalid = false,
 }: {
   id?: string;
   defaultCountry?: CountryCode;
+  /** Countries that are left out of the picker entirely. */
+  excludeCountries?: readonly CountryCode[];
   onChange: (e164: string, valid: boolean) => void;
   invalid?: boolean;
 }) {
-  const countries = useMemo(buildCountries, []);
+  // Callers usually pass an inline array, so key the memo on its contents rather than its identity.
+  const excludeKey = (excludeCountries ?? []).join(",");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const countries = useMemo(() => buildCountries(excludeCountries ?? []), [excludeKey]);
   const [country, setCountry] = useState<CountryCode>(defaultCountry);
   const [display, setDisplay] = useState("");
   const [open, setOpen] = useState(false);

@@ -30,7 +30,7 @@ function Sidebar({ open, onClose, onLogout }: { open: boolean; onClose: () => vo
       <aside className="hidden w-[260px] border-r border-slate-200 bg-[#f7f5f3] lg:flex lg:flex-col">
         <div className="flex items-center gap-3 border-b border-slate-200 px-6 py-5">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand)] text-xs font-bold text-white">W</div>
-          <div className="text-lg font-semibold">WayFeir</div>
+          <div className="text-lg font-semibold">WayFair</div>
         </div>
 
         <nav className="flex-1 px-3 py-4">
@@ -63,7 +63,7 @@ function Sidebar({ open, onClose, onLogout }: { open: boolean; onClose: () => vo
             <div className="mb-4 flex items-center justify-between border-b border-slate-200 px-3 py-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand)] text-xs font-bold text-white">W</div>
-                <span className="text-lg font-semibold text-slate-900">WayFeir</span>
+                <span className="text-lg font-semibold text-slate-900">WayFair</span>
               </div>
               <button onClick={onClose} className="rounded-lg p-2 text-slate-600 hover:bg-white">
                 <X className="h-4 w-4" />
@@ -132,7 +132,7 @@ export default function SellerLayout({ children }: { children: ReactNode }) {
 
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-sm font-bold">W</div>
-                  <span className="text-xl font-semibold tracking-tight">WayFeir</span>
+                  <span className="text-xl font-semibold tracking-tight">WayFair</span>
                 </div>
               </div>
 

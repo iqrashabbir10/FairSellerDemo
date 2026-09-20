@@ -48,7 +48,6 @@ const Bubble = memo(function Bubble({
   onRetry,
   onDiscard,
   onReply,
-  onDelete,
   onJump,
 }: {
   item: ChatMessage;
@@ -58,7 +57,6 @@ const Bubble = memo(function Bubble({
   onRetry: (id: string) => void;
   onDiscard: (id: string) => void;
   onReply: (item: ChatMessage) => void;
-  onDelete: (id: string) => void;
   onJump: (id: string) => void;
 }) {
   const status = deliveryStatus(item);
@@ -69,7 +67,7 @@ const Bubble = memo(function Bubble({
       <div id={`msg-${item.id}`} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
         <div className="flex max-w-[80%] items-center gap-1.5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-3.5 py-2 text-sm italic text-slate-400 sm:max-w-[70%]">
           <Ban className="h-3.5 w-3.5 shrink-0" />
-          {mine ? "You deleted this message" : "This message was deleted"}
+          This message was deleted
           <span className="ml-1 text-[10px] not-italic">{formatTime(item.createdAtUtc)}</span>
         </div>
       </div>
@@ -81,11 +79,6 @@ const Bubble = memo(function Bubble({
       <button type="button" onClick={() => onReply(item)} title="Reply" aria-label="Reply to this message" className="rounded-full p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700">
         <Reply className="h-3.5 w-3.5" />
       </button>
-      {mine && (
-        <button type="button" onClick={() => onDelete(item.id)} title="Delete for everyone" aria-label="Delete this message" className="rounded-full p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      )}
     </div>
   );
 
@@ -109,7 +102,7 @@ const Bubble = memo(function Bubble({
               <RotateCcw className="h-3 w-3" /> Retry
             </button>
             <button onClick={() => onDiscard(item.id)} className="inline-flex items-center gap-1 font-semibold text-slate-500 hover:underline">
-              <Trash2 className="h-3 w-3" /> Delete
+              <Trash2 className="h-3 w-3" /> Discard
             </button>
           </div>
         )}
@@ -140,7 +133,7 @@ export function ChatThread({
   emptyText?: string;
   onBack?: () => void;
 }) {
-  const { messages, loading, loadingOlder, hasMore, error, connection, loadOlder, send, retry, discard, deleteMessage } = thread;
+  const { messages, loading, loadingOlder, hasMore, error, connection, loadOlder, send, retry, discard } = thread;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -155,8 +148,6 @@ export function ChatThread({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   const startReply = useCallback((item: ChatMessage) => {
     setReplyTo(item);
@@ -175,16 +166,6 @@ export function ChatThread({
     el.classList.add("bg-[var(--brand)]/15");
     window.setTimeout(() => el.classList.remove("bg-[var(--brand)]/15"), 1400);
   }, []);
-
-  const confirmDelete = async () => {
-    if (!confirmDeleteId) return;
-    setDeleting(true);
-    const problem = await deleteMessage(confirmDeleteId);
-    setDeleting(false);
-    setConfirmDeleteId(null);
-    if (problem) setComposeError(problem);
-    if (replyTo?.id === confirmDeleteId) setReplyTo(null);
-  };
 
   const scrollToBottom = useCallback((smooth = false) => {
     const el = scrollRef.current;
@@ -376,7 +357,6 @@ export function ChatThread({
                   onRetry={retry}
                   onDiscard={discard}
                   onReply={startReply}
-                  onDelete={setConfirmDeleteId}
                   onJump={jumpTo}
                 />
               )
@@ -472,23 +452,6 @@ export function ChatThread({
         </div>
         {text.length > MAX_LENGTH - 300 && <div className="mt-1 text-right text-[11px] text-slate-400">{text.length}/{MAX_LENGTH}</div>}
       </form>
-
-      {confirmDeleteId && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-label="Delete message">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
-            <h3 className="text-base font-semibold text-slate-900">Delete this message?</h3>
-            <p className="mt-1 text-sm text-slate-500">It will be removed for everyone in this conversation, including any attached file. This can&apos;t be undone.</p>
-            <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setConfirmDeleteId(null)} disabled={deleting} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
-                Cancel
-              </button>
-              <button onClick={confirmDelete} disabled={deleting} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
-                {deleting ? "Deleting…" : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {dragging && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-2xl border-2 border-dashed border-[var(--brand)] bg-white/80 text-sm font-semibold text-[var(--brand)]">

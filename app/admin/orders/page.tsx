@@ -188,7 +188,7 @@ function InvoiceModal({
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--brand)] text-sm font-bold text-white">W</div>
               <div>
-                <div className="text-lg font-semibold text-slate-900">WayFeir</div>
+                <div className="text-lg font-semibold text-slate-900">WayFair</div>
                 <div className="text-xs text-slate-500">Marketplace</div>
               </div>
             </div>

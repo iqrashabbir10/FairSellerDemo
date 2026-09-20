@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WayFeir | Marketplace Control",
+  title: "WayFair | Marketplace Control",
   description: "Mock marketplace prototype for admin and seller flows.",
 };
 

@@ -96,10 +96,6 @@ export async function sendSellerSupportMessage(conversationId: string, message: 
   });
 }
 
-export function deleteSellerSupportMessage(conversationId: string, messageId: string) {
-  return apiFetch<unknown>(`/api/seller/support/${conversationId}/messages/${messageId}`, { method: "DELETE" });
-}
-
 export function getSellerSupportMessages(conversationId: string, request?: PagedRequest) {
   return apiFetch<PagedResult<SupportMessageDto>>(`/api/seller/support/${conversationId}/messages`, {
     query: toPagedQuery(request),

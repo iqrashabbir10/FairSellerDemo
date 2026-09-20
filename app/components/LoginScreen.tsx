@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Lock, Store, UserPlus } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Lock } from "lucide-react";
 import { login } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { clearSession, getSession, setSession } from "@/lib/api/session";
@@ -27,22 +27,19 @@ function friendlyLoginError(err: unknown) {
   return "Unable to sign in. Please try again.";
 }
 
-export type LoginVariant = "default" | "seller";
+const fieldClass =
+  "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white";
 
-/**
- * Shared sign-in screen. The default page offers a generic sign-in; the seller variant (opened from a
- * link an admin shares) is tailored to sellers and leads with a "Register as a new seller" button.
- * `inviteCode` is carried through to the registration form so the seller doesn't have to type it.
- */
-export function LoginScreen({ variant = "default", inviteCode }: { variant?: LoginVariant; inviteCode?: string }) {
-  const isSeller = variant === "seller";
-  const registerHref = inviteCode ? `/auth/seller-register?invite=${encodeURIComponent(inviteCode)}` : "/auth/seller-register";
+/** The one login page for admins and sellers: the role comes back from the server and decides where they land. */
+export function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Already signed in: skip the form.
   useEffect(() => {
     const session = getSession();
     if (session?.mustChangePassword) {
@@ -53,7 +50,7 @@ export function LoginScreen({ variant = "default", inviteCode }: { variant?: Log
     if (session?.role === "Seller") router.push("/seller/dashboard");
   }, [router]);
 
-  const submitLogin = async (event: React.FormEvent) => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
     setLoading(true);
@@ -92,114 +89,77 @@ export function LoginScreen({ variant = "default", inviteCode }: { variant?: Log
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f6f5f3] p-4 sm:p-6">
-      <div className="grid w-full max-w-5xl overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_20px_70px_rgba(15,23,42,0.08)] lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="bg-[var(--brand)] p-8 text-white sm:p-10">
-          <div className="mb-10 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-lg font-bold">W</div>
-            <div className="text-2xl font-semibold tracking-tight">WayFeir</div>
-          </div>
-
-          <div className="mb-6 text-sm font-medium uppercase tracking-[0.18em] text-white/80">{isSeller ? "Seller portal" : "Marketplace control"}</div>
-          <h1 className="max-w-md text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
-            {isSeller ? "Grow your business with WayFeir." : "Sell smarter, manage faster."}
-          </h1>
-          <p className="mt-4 max-w-md text-base text-white/85">
-            {isSeller
-              ? "Already a seller? Sign in to your dashboard. New here? Register as a seller in a few minutes — no card needed."
-              : "Sign in with your email and password to open your dashboard."}
-          </p>
-
-          <div className="mt-8 flex flex-wrap gap-3">
-            {isSeller ? (
-              <>
-                <div className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium">List products</div>
-                <div className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium">Track orders</div>
-                <div className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium">Earn to your wallet</div>
-              </>
-            ) : (
-              <>
-                <div className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium">Admin panel</div>
-                <div className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium">Seller onboarding</div>
-              </>
-            )}
-          </div>
+      <div className="w-full max-w-md">
+        <div className="mb-6 flex items-center justify-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--brand)] text-lg font-bold text-white">W</div>
+          <div className="text-2xl font-semibold tracking-tight text-slate-900">WayFair</div>
         </div>
 
-        <div className="flex items-center justify-center p-6 sm:p-10">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-[#fffdfc] p-5 shadow-sm sm:p-7">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--brand)]/10 text-[var(--brand)]">
-                <Lock className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">{isSeller ? "Existing seller" : "Welcome back"}</div>
-                <h2 className="text-2xl font-semibold text-slate-900">{isSeller ? "Sign in to your seller account" : "Sign in"}</h2>
-              </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] sm:p-8">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--brand)]/10 text-[var(--brand)]">
+              <Lock className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Welcome back</div>
+              <h1 className="text-2xl font-semibold text-slate-900">Sign in</h1>
+            </div>
+          </div>
+
+          <form onSubmit={submit} className="space-y-4">
+            <div>
+              <label htmlFor="login-email" className="mb-2 block text-sm font-medium text-slate-700">Email</label>
+              <input
+                id="login-email"
+                type="email"
+                required
+                autoComplete="username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={fieldClass}
+                placeholder="you@example.com"
+              />
             </div>
 
-            <form onSubmit={submitLogin} className="space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
+            <div>
+              <label htmlFor="login-password" className="mb-2 block text-sm font-medium text-slate-700">Password</label>
+              <div className="relative">
                 <input
-                  type="email"
-                  required
-                  autoComplete="username"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white"
-                  placeholder="you@example.com"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Password</label>
-                <input
-                  type="password"
+                  id="login-password"
+                  type={showPassword ? "text" : "password"}
                   required
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[var(--brand)] focus:bg-white"
+                  className={`${fieldClass} pr-10`}
                   placeholder="Enter password"
                 />
-              </div>
-
-              {error && <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-hover)] disabled:opacity-60"
-              >
-                {loading ? "Signing in..." : "Login"}
-                <ArrowRight className="h-4 w-4" />
-              </button>
-
-              {isSeller ? (
-                <div className="rounded-2xl border border-[var(--brand)]/20 bg-[var(--brand)]/5 p-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    <Store className="h-4 w-4 text-[var(--brand)]" />
-                    New to WayFeir?
-                  </div>
-                  <p className="mt-1 text-xs text-slate-600">Create your seller account and start listing products once an admin approves you.</p>
-                  <a
-                    href={registerHref}
-                    className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--brand)] bg-white px-4 py-3 text-sm font-semibold text-[var(--brand)] transition hover:bg-[var(--brand)] hover:text-white"
-                  >
-                    <UserPlus className="h-4 w-4" />
-                    Register as a new seller
-                  </a>
-                </div>
-              ) : (
-                <a
-                  href={registerHref}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:text-slate-600"
                 >
-                  Create new seller account
-                </a>
-              )}
-            </form>
-          </div>
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-hover)] disabled:opacity-60"
+            >
+              {loading ? "Signing in..." : "Login"}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </form>
         </div>
       </div>
     </main>

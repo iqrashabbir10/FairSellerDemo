@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
-import { deleteAdminSupportMessage, getAdminSupportConversations, getAdminSupportMessages, markAdminSupportMessagesRead, sendAdminSupportMessage } from "@/lib/api/admin";
+import { getAdminSupportConversations, getAdminSupportMessages, markAdminSupportMessagesRead, sendAdminSupportMessage } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { getSession } from "@/lib/api/session";
 import { onConversationStarted, onNewMessage, onReconnected, watchSellerPresence } from "@/lib/signalr/supportHub";
@@ -18,7 +18,6 @@ const adminChatApi: ChatApi = {
   getMessages: getAdminSupportMessages,
   markRead: markAdminSupportMessagesRead,
   send: sendAdminSupportMessage,
-  remove: deleteAdminSupportMessage,
 };
 
 function formatListTime(iso: string) {

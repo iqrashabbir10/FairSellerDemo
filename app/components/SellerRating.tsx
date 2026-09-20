@@ -226,7 +226,7 @@ export function SellerRatingHero({ rating, creditScore, name }: { rating?: numbe
                 </span>
                 <span className="text-lg font-semibold">{rating ? `${rating}.0` : "—"}<span className="text-sm font-normal text-white/70"> / 5</span></span>
               </div>
-              {rating ? <p className="mt-1 text-sm text-white/80">{RATING_LABELS[rating]} · rated by the WayFeir team</p> : null}
+              {rating ? <p className="mt-1 text-sm text-white/80">{RATING_LABELS[rating]} · rated by the WayFair team</p> : null}
             </>
           ) : (
             <p className="mt-3 max-w-md text-sm text-white/80">You haven&apos;t been rated yet. Once our team reviews your account activity, your star rating and credit score will appear here.</p>

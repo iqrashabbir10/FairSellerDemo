@@ -7,7 +7,6 @@ import {
   joinConversation,
   leaveConversation,
   onConnectionState,
-  onMessageDeleted,
   onMessagesDelivered,
   onMessagesRead,
   onReceiveMessage,
@@ -33,11 +32,7 @@ export interface ChatApi {
   getMessages: (conversationId: string, request: PagedRequest) => Promise<PagedResult<SupportMessageDto>>;
   markRead: (conversationId: string) => Promise<unknown>;
   send: (conversationId: string, text: string, file?: File | null, replyToMessageId?: string | null) => Promise<SupportMessageDto>;
-  remove: (conversationId: string, messageId: string) => Promise<unknown>;
 }
-
-// What a deleted message looks like locally: body, attachments and quote are gone, the tombstone stays.
-const asDeleted = (m: ChatMessage): ChatMessage => ({ ...m, isDeleted: true, message: "", attachments: null, localFile: undefined });
 
 export function deliveryStatus(message: ChatMessage): DeliveryStatus {
   if (message.localStatus) return message.localStatus;
@@ -159,18 +154,6 @@ export function useChatThread({ conversationId, userId, api }: { conversationId:
       );
     });
 
-    // Also refresh any quote that points at the deleted message.
-    const offDeleted = onMessageDeleted(({ conversationId: cid, messageId }) => {
-      if (cid !== id) return;
-      setMessages((current) =>
-        current.map((m) => {
-          if (m.id === messageId) return asDeleted(m);
-          if (m.replyTo?.id === messageId) return { ...m, replyTo: { ...m.replyTo, message: "", hasAttachment: false, isDeleted: true } };
-          return m;
-        }),
-      );
-    });
-
     // After a drop we may have missed pushes — pull the newest page and merge it in.
     const offReconnected = onReconnected(() => {
       fetchLatest(id)
@@ -185,7 +168,6 @@ export function useChatThread({ conversationId, userId, api }: { conversationId:
       offReceive();
       offRead();
       offDelivered();
-      offDeleted();
       offReconnected();
       leaveConversation(id).catch(() => {});
     };
@@ -305,23 +287,5 @@ export function useChatThread({ conversationId, userId, api }: { conversationId:
     setMessages((current) => current.filter((m) => m.id !== localId));
   }, []);
 
-  /** "Delete for everyone". Optimistic; restores the message and returns an error string if the server refuses. */
-  const deleteMessage = useCallback(
-    async (messageId: string): Promise<string | null> => {
-      if (!conversationId) return "Conversation isn't ready yet.";
-      const original = messages.find((m) => m.id === messageId);
-      if (!original) return null;
-      setMessages((current) => current.map((m) => (m.id === messageId ? asDeleted(m) : m)));
-      try {
-        await apiRef.current.remove(conversationId, messageId);
-        return null;
-      } catch (err) {
-        setMessages((current) => current.map((m) => (m.id === messageId ? original : m)));
-        return err instanceof ApiError ? err.errors[0] ?? err.message : "Couldn't delete this message.";
-      }
-    },
-    [conversationId, messages],
-  );
-
-  return { messages, loading, loadingOlder, hasMore, error, connection, loadOlder, send, retry, discard, deleteMessage };
+  return { messages, loading, loadingOlder, hasMore, error, connection, loadOlder, send, retry, discard };
 }

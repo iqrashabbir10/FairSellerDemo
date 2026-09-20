@@ -101,6 +101,9 @@ function stepForServerError(message: string) {
   return 2;
 }
 
+// Same accent as the storefront, scoped to this page so the rest of the app keeps the user's chosen theme.
+const STORE_THEME = { "--brand": "#E6302D", "--brand-hover": "#C92320" } as React.CSSProperties;
+
 function SellerRegisterForm({ initialInvite }: { initialInvite: string }) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>({ ...initialForm, inviteCode: initialInvite });
@@ -190,7 +193,7 @@ function SellerRegisterForm({ initialInvite }: { initialInvite: string }) {
 
   if (submitted) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#f6f5f3] px-4 py-8">
+      <main style={STORE_THEME} className="flex min-h-screen items-center justify-center bg-[#f6f5f3] px-4 py-8">
         <div className="w-full max-w-2xl rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_20px_70px_rgba(15,23,42,0.08)] sm:p-8">
           <div className="flex justify-center">
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
@@ -228,8 +231,8 @@ function SellerRegisterForm({ initialInvite }: { initialInvite: string }) {
   const ring = (key: keyof Errors) => (errors[key] ? "!border-red-300" : "");
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f6f5f3] px-4 py-8">
-      <div className="w-full max-w-4xl rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] sm:p-8">
+    <main style={STORE_THEME} className="flex min-h-screen items-center justify-center bg-[#f6f5f3] px-4 py-8">
+      <div className="w-full min-w-0 max-w-4xl rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] sm:p-8">
         <div className="mb-8 flex items-center justify-between gap-3">
           <div>
             <div className="text-sm font-medium uppercase tracking-[0.2em] text-slate-500">Seller onboarding</div>
@@ -248,7 +251,7 @@ function SellerRegisterForm({ initialInvite }: { initialInvite: string }) {
           </div>
         </div>
 
-        <ol className="mb-8 grid gap-3 sm:grid-cols-3">
+        <ol className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {steps.map((item, index) => {
             const Icon = item.icon;
             const active = index === step;
@@ -291,7 +294,7 @@ function SellerRegisterForm({ initialInvite }: { initialInvite: string }) {
           noValidate
         >
           {step === 0 && (
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <Field label="Full name" error={errors.fullName}>
                 <input value={form.fullName} onChange={(e) => update("fullName", e.target.value)} autoComplete="name" placeholder="As shown on your ID" className={`${inputClass} ${ring("fullName")}`} />
               </Field>
@@ -302,6 +305,8 @@ function SellerRegisterForm({ initialInvite }: { initialInvite: string }) {
                 <label htmlFor="phone" className="mb-1.5 block text-sm font-medium text-slate-700">Phone number</label>
                 <PhoneInput
                   id="phone"
+                  defaultCountry="US"
+                  excludeCountries={["PK"]}
                   invalid={!!errors.phoneNumber}
                   onChange={(e164, valid) => {
                     setPhoneValid(valid);
@@ -314,7 +319,7 @@ function SellerRegisterForm({ initialInvite }: { initialInvite: string }) {
                   <span className="mt-1 block text-xs text-slate-400">Pick your country, then type your number — we&apos;ll format it for you.</span>
                 )}
               </div>
-              <Field label="Invitation code (optional)" hint="Have one from us? Enter it here.">
+              <Field label="Invitation code">
                 <input value={form.inviteCode} onChange={(e) => update("inviteCode", e.target.value)} placeholder="e.g. WELCOME-2026" className={inputClass} />
               </Field>
 
@@ -331,7 +336,7 @@ function SellerRegisterForm({ initialInvite }: { initialInvite: string }) {
               </Field>
 
               {form.password.length > 0 && (
-                <ul className="grid gap-1 rounded-xl bg-slate-50 p-3 text-xs sm:grid-cols-2 md:col-span-2 lg:grid-cols-3">
+                <ul className="grid grid-cols-1 gap-1 rounded-xl bg-slate-50 p-3 text-xs sm:grid-cols-2 md:col-span-2 lg:grid-cols-3">
                   {rules.map((rule) => (
                     <li key={rule.label} className={`flex items-center gap-1.5 ${rule.ok ? "text-emerald-600" : "text-slate-500"}`}>
                       <Check className={`h-3.5 w-3.5 ${rule.ok ? "" : "opacity-30"}`} />
@@ -344,7 +349,7 @@ function SellerRegisterForm({ initialInvite }: { initialInvite: string }) {
           )}
 
           {step === 1 && (
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <Field label="Shop name" error={errors.shopName}>
                 <input value={form.shopName} onChange={(e) => update("shopName", e.target.value)} placeholder="My Store" className={`${inputClass} ${ring("shopName")}`} />
               </Field>
@@ -358,7 +363,7 @@ function SellerRegisterForm({ initialInvite }: { initialInvite: string }) {
 
           {step === 2 && (
             <div className="space-y-5">
-              <div className="grid gap-5 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <Field label="Government ID type">
                   <select value={form.idType} onChange={(e) => update("idType", e.target.value as IdentityDocumentType)} className={inputClass}>
                     {ID_TYPES.map((idType) => <option key={idType}>{idType}</option>)}
