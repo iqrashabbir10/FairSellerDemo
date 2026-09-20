@@ -679,8 +679,7 @@ export default function StorePage() {
           <div>
             <h3 className="text-sm font-extrabold uppercase tracking-wide">Start A Conversation</h3>
             <address className="mt-3 space-y-2 text-sm not-italic text-white/90">
-              <p><a href="tel:+12125550123" className="rounded hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">+1 (212) 555-0123</a></p>
-              <p><a href="mailto:support@wayfair-seller.com" className="rounded hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">support@wayfair-seller.com</a></p>
+             <p><a href="mailto:supportwayfair@gmail.com" className="rounded hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">supportwayfair@gmail.com</a></p>
               <p><Link href="#" className="rounded hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">Support ticket</Link></p>
               <p>123 Main St, New York, NY 10001, USA</p>
             </address>

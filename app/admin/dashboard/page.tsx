@@ -17,10 +17,11 @@ import {
 } from "lucide-react";
 import { getAdminDashboard, getAdminOrders, getAdminSellers, updateSellerStatus } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
-import type { AdminDashboardDto, AdminOrderDto, AdminSellerDto, OrderStatus, SellerStatus } from "@/lib/api/types";
+import type { AdminDashboardDto, AdminOrderDto, AdminSellerDto, SellerStatus } from "@/lib/api/types";
 import { useAuthGuard } from "@/lib/api/useAuthGuard";
 import { SellerStatusConfirmModal } from "@/app/components/SellerStatusConfirmModal";
 import { ColumnChart, LineChart, compact, type DayPoint } from "@/app/components/DashboardCharts";
+import { ColorPanel, GradientStatCard, SalesOverviewCard, countByGroup, type GradientName } from "@/app/components/DashboardCards";
 
 const RANGES = [7, 14, 30] as const;
 
@@ -97,13 +98,13 @@ function sumWindow(orders: AdminOrderDto[], fromDaysAgo: number, toDaysAgo: numb
 }
 
 function Delta({ current, previous }: { current: number; previous: number }) {
-  if (previous === 0 && current === 0) return <span className="text-xs text-slate-400">No change</span>;
-  if (previous === 0) return <span className="text-xs font-medium text-emerald-600">New activity</span>;
+  if (previous === 0 && current === 0) return <span>No change</span>;
+  if (previous === 0) return <span className="rounded-full bg-white/20 px-2 py-0.5 font-semibold">New activity</span>;
   const pct = ((current - previous) / previous) * 100;
   const up = pct >= 0;
   const Icon = up ? ArrowUpRight : ArrowDownRight;
   return (
-    <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${up ? "text-emerald-600" : "text-red-600"}`}>
+    <span className="inline-flex items-center gap-0.5 rounded-full bg-white/20 px-2 py-0.5 font-semibold">
       <Icon className="h-3.5 w-3.5" />
       {Math.abs(pct).toFixed(1)}%
     </span>
@@ -123,15 +124,11 @@ function SectionError({ message, onRetry }: { message: string; onRetry: () => vo
   );
 }
 
-function Card({ title, action, children, className = "" }: { title: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
+function Card({ title, accent = "bg-[var(--brand)]", action, children, className = "" }: { title: string; accent?: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-        {action}
-      </div>
+    <ColorPanel title={title} accent={accent} action={action} className={className}>
       {children}
-    </section>
+    </ColorPanel>
   );
 }
 
@@ -212,11 +209,8 @@ export default function AdminDashboardPage() {
   const previousOrders = useMemo(() => sumWindow(orders, range * 2, range, () => 1), [orders, range]);
   const previousRevenue = useMemo(() => sumWindow(orders, range * 2, range, (o) => o.totalAmount), [orders, range]);
 
-  const statusBreakdown = useMemo(() => {
-    const counts = new Map<OrderStatus, number>();
-    orders.forEach((o) => counts.set(o.status, (counts.get(o.status) ?? 0) + 1));
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
-  }, [orders]);
+
+  const statusCounts = useMemo(() => countByGroup(orders.map((o) => o.status)), [orders]);
 
   const recentOrders = useMemo(
     () => [...orders].sort((a, b) => b.createdAtUtc.localeCompare(a.createdAtUtc)).slice(0, 6),
@@ -225,14 +219,13 @@ export default function AdminDashboardPage() {
 
   if (!ready) return null;
 
-  const attention = dashboard
+  const attention: { label: string; count: number; href: string; icon: typeof Store; gradient: GradientName }[] = dashboard
     ? [
-        { label: "Seller approvals", count: dashboard.pendingSellers, href: "/admin/sellers", icon: Store },
-        { label: "Payments to verify", count: dashboard.pendingPaymentVerifications, href: "/admin/orders", icon: CircleDollarSign },
-        { label: "Withdrawal requests", count: dashboard.pendingWithdrawals, href: "/admin/withdrawals", icon: WalletCards },
+        { label: "Seller approvals", count: dashboard.pendingSellers, href: "/admin/sellers", icon: Store, gradient: "amber" },
+        { label: "Payments to verify", count: dashboard.pendingPaymentVerifications, href: "/admin/orders", icon: CircleDollarSign, gradient: "orange" },
+        { label: "Withdrawal requests", count: dashboard.pendingWithdrawals, href: "/admin/withdrawals", icon: WalletCards, gradient: "purple" },
       ]
     : [];
-  const attentionTotal = attention.reduce((sum, a) => sum + a.count, 0);
 
   const kpis = dashboard
     ? [
@@ -240,29 +233,29 @@ export default function AdminDashboardPage() {
           label: "Gross revenue",
           value: money(grossRevenue),
           icon: CircleDollarSign,
-          tone: "bg-emerald-50 text-emerald-600",
-          foot: <><Delta current={revenueInRange} previous={previousRevenue} /><span className="text-xs text-slate-400">vs previous {range} days</span></>,
+          gradient: "green" as GradientName,
+          foot: <><Delta current={revenueInRange} previous={previousRevenue} /><span>vs previous {range} days</span></>,
         },
         {
           label: "Platform profit",
           value: money(dashboard.totalPlatformProfit),
           icon: WalletCards,
-          tone: "bg-emerald-50 text-emerald-600",
-          foot: <span className="text-xs text-slate-400">All time</span>,
+          gradient: "teal" as GradientName,
+          foot: <span>All time</span>,
         },
         {
           label: "Total orders",
           value: dashboard.totalOrders.toLocaleString(),
           icon: ShoppingCart,
-          tone: "bg-amber-50 text-amber-600",
-          foot: <><Delta current={ordersInRange} previous={previousOrders} /><span className="text-xs text-slate-400">vs previous {range} days</span></>,
+          gradient: "blue" as GradientName,
+          foot: <><Delta current={ordersInRange} previous={previousOrders} /><span>vs previous {range} days</span></>,
         },
         {
           label: "Active sellers",
           value: dashboard.approvedSellers.toLocaleString(),
           icon: Users,
-          tone: "bg-blue-50 text-blue-600",
-          foot: <span className="text-xs text-slate-400">{dashboard.totalSellers.toLocaleString()} registered in total</span>,
+          gradient: "pink" as GradientName,
+          foot: <span>{dashboard.totalSellers.toLocaleString()} registered in total</span>,
         },
       ]
     : [];
@@ -322,41 +315,28 @@ export default function AdminDashboardPage() {
         </>
       ) : (
         <>
-          {dashboard && (
-            <div className={`flex flex-wrap items-center gap-3 rounded-2xl border px-4 py-3 ${attentionTotal > 0 ? "border-amber-200 bg-amber-50/60" : "border-emerald-200 bg-emerald-50/60"}`}>
-              <div className={`inline-flex items-center gap-2 text-sm font-semibold ${attentionTotal > 0 ? "text-amber-800" : "text-emerald-800"}`}>
-                {attentionTotal > 0 ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-                {attentionTotal > 0 ? "Needs your attention" : "All caught up — nothing is waiting on you"}
-              </div>
-              {attentionTotal > 0 &&
-                attention
-                  .filter((a) => a.count > 0)
-                  .map(({ label, count, href, icon: Icon }) => (
-                    <Link key={label} href={href} className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white px-3 py-1 text-sm font-medium text-slate-700 shadow-sm transition hover:border-amber-300">
-                      <Icon className="h-3.5 w-3.5 text-amber-600" />
-                      {count} {label.toLowerCase()}
-                      <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
-                    </Link>
-                  ))}
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {kpis.map(({ label, value, icon, gradient, foot }) => (
+              <GradientStatCard key={label} label={label} value={value} icon={icon} gradient={gradient} foot={foot} />
+            ))}
+          </div>
+
+          {attention.length > 0 && (
+            <div className="grid gap-4 sm:grid-cols-3">
+              {attention.map(({ label, count, href, icon, gradient }) => (
+                <GradientStatCard key={label} label={label} value={count.toLocaleString()} icon={icon} gradient={gradient} href={href} foot={<span>{count > 0 ? "Needs your attention" : "All caught up"}</span>} />
+              ))}
             </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {kpis.map(({ label, value, icon: Icon, tone, foot }) => (
-              <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm text-slate-500">{label}</p>
-                    <div className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 tabular-nums">{value}</div>
-                  </div>
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                </div>
-                <div className="mt-4 flex items-center gap-2">{foot}</div>
-              </div>
-            ))}
-          </div>
+          {!errors.orders && (
+            <SalesOverviewCard
+              subtitle="Order status breakdown across all sellers"
+              total={money(grossRevenue)}
+              counts={statusCounts}
+              pills={[`${orders.length.toLocaleString()} total orders`, `${(dashboard?.approvedSellers ?? 0).toLocaleString()} active sellers`, `${money(dashboard?.totalPlatformProfit ?? 0)} platform profit`]}
+            />
+          )}
 
           {errors.orders ? (
             <SectionError message={errors.orders} onRetry={load} />
@@ -364,12 +344,14 @@ export default function AdminDashboardPage() {
             <div className="grid gap-6 lg:grid-cols-2">
               <Card
                 title="Orders"
+                accent="bg-blue-500"
                 action={<span className="text-sm text-slate-500"><span className="font-semibold text-slate-900">{ordersInRange.toLocaleString()}</span> in the last {range} days</span>}
               >
                 <ColumnChart points={ordersSeries} format={(v) => (Number.isInteger(v) ? v.toLocaleString() : v.toFixed(1))} title={`Orders per day, last ${range} days`} />
               </Card>
               <Card
                 title="Revenue"
+                accent="bg-emerald-500"
                 action={<span className="text-sm text-slate-500"><span className="font-semibold text-slate-900">{money(revenueInRange)}</span> in the last {range} days</span>}
               >
                 <LineChart points={revenueSeries} format={(v) => (v >= 1000 ? `$${compact(v)}` : `$${Math.round(v * 100) / 100}`)} title={`Revenue per day, last ${range} days`} />
@@ -377,9 +359,10 @@ export default function AdminDashboardPage() {
             </div>
           )}
 
-          <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
+          <div>
             <Card
               title="Recent orders"
+              accent="bg-pink-500"
               action={<Link href="/admin/orders" className="inline-flex items-center gap-1 text-sm font-medium text-[var(--brand)] hover:underline">View all <ArrowRight className="h-3.5 w-3.5" /></Link>}
             >
               {recentOrders.length === 0 ? (
@@ -417,33 +400,12 @@ export default function AdminDashboardPage() {
               )}
             </Card>
 
-            <Card title="Orders by status">
-              {statusBreakdown.length === 0 ? (
-                <EmptyState icon={ShoppingCart} title="No orders yet" />
-              ) : (
-                <ul className="space-y-3">
-                  {statusBreakdown.map(([status, count]) => {
-                    const share = orders.length ? (count / orders.length) * 100 : 0;
-                    return (
-                      <li key={status}>
-                        <div className="mb-1 flex items-center justify-between text-sm">
-                          <span className="text-slate-700">{statusLabel(status)}</span>
-                          <span className="tabular-nums text-slate-500"><span className="font-semibold text-slate-900">{count}</span> · {share.toFixed(0)}%</span>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                          <div className="h-full rounded-full bg-[var(--brand)]" style={{ width: `${Math.max(share, 2)}%` }} />
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </Card>
           </div>
 
           <div>
             <Card
               title="Pending seller approvals"
+              accent="bg-amber-500"
               action={
                 <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
                   {dashboard?.pendingSellers ?? pendingSellers.length} pending

@@ -320,7 +320,7 @@ function SellerRegisterForm({ initialInvite }: { initialInvite: string }) {
                 )}
               </div>
               <Field label="Invitation code">
-                <input value={form.inviteCode} onChange={(e) => update("inviteCode", e.target.value)} placeholder="e.g. WELCOME-2026" className={inputClass} />
+                <input value={form.inviteCode} onChange={(e) => update("inviteCode", e.target.value)} placeholder="" className={inputClass} />
               </Field>
 
               <Field label="Password" error={errors.password}>
