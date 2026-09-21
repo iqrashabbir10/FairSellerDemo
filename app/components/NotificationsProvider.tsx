@@ -28,7 +28,12 @@ export function notificationMeta(type?: string | null): NotificationMeta {
     case "OrderPicked":
       return { icon: PackageCheck, tone: "bg-emerald-50 text-emerald-600" };
     case "WalletCredited":
+    case "WithdrawalApproved":
       return { icon: Wallet, tone: "bg-emerald-50 text-emerald-600" };
+    case "WithdrawalRequested":
+      return { icon: Wallet, tone: "bg-amber-50 text-amber-600" };
+    case "WithdrawalRejected":
+      return { icon: Wallet, tone: "bg-red-50 text-red-600" };
     default:
       return { icon: Bell, tone: "bg-slate-100 text-slate-500" };
   }
@@ -90,6 +95,9 @@ export function NotificationsProvider({ role, children }: { role: UserRole; chil
           return `${basePath}/orders`;
         case "Wallet":
           return `${basePath}/wallet`;
+        case "Withdrawal":
+          // Admins review requests on their own page; sellers follow them on the wallet page.
+          return basePath === "/admin" ? "/admin/withdrawals" : "/seller/wallet";
         default:
           return `${basePath}/notifications`;
       }

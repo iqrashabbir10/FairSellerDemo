@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Eye, Printer, Search, X } from "lucide-react";
+import { Eye, Lock, Printer, Search, X } from "lucide-react";
 import { useResponsiveView, ViewToggle } from "@/app/components/ViewToggle";
 import { Pagination } from "@/app/components/Pagination";
 import { getAdminOrders, getAdminSellers, updateOrderStatus } from "@/lib/api/admin";
@@ -18,6 +18,9 @@ const STATUSES: OrderStatus[] = [
 
 // Admins can only move an order to these two statuses; the other statuses stay visible and filterable.
 const ADMIN_SETTABLE: OrderStatus[] = ["OnTheWay", "Delivered"];
+
+// A delivered order is final: its status can no longer be changed (the server enforces this too).
+const LOCKED: OrderStatus[] = ["Delivered", "Completed"];
 
 const statusLabel = (status: string) => status.replace(/([a-z])([A-Z])/g, "$1 $2");
 
@@ -358,7 +361,17 @@ export default function AdminOrdersPage() {
   };
 
   // Picking a status only stages it; nothing is sent until the admin confirms in the dialog.
-  const statusSelect = (invoice: Invoice, dark = false) => (
+  const statusSelect = (invoice: Invoice, dark = false) =>
+    LOCKED.includes(invoice.status) ? (
+      <span
+        title="This order has been delivered, so its status is locked."
+        aria-label={`Status of ${invoiceNumber(invoice)} is locked`}
+        className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium ${dark ? "border-white/30 bg-white/15 text-white" : "border-slate-200 bg-slate-50 text-slate-500"}`}
+      >
+        <Lock className="h-3.5 w-3.5" />
+        Locked
+      </span>
+    ) : (
     <select
       value={ADMIN_SETTABLE.includes(invoice.status) ? invoice.status : ""}
       onChange={(e) => e.target.value && setPending({ invoiceKey: invoice.key, status: e.target.value as OrderStatus })}
@@ -374,7 +387,7 @@ export default function AdminOrdersPage() {
         <option key={s} value={s}>{statusLabel(s)}</option>
       ))}
     </select>
-  );
+    );
 
   if (!ready) return null;
 

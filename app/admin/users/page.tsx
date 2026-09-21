@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Ban, CheckCircle2, Crown, Eye, EyeOff, Plus, Search, ShieldCheck, Store, UserRoundCheck, X } from "lucide-react";
+import { Ban, CheckCircle2, Crown, Eye, EyeOff, Plus, Power, PowerOff, Search, ShieldCheck, Store, UserRoundCheck, X } from "lucide-react";
 import { Pagination } from "@/app/components/Pagination";
 import { ApiError } from "@/lib/api/client";
 import { getSession } from "@/lib/api/session";
-import type { ManagedUserDto, PagedResult, UserRole } from "@/lib/api/types";
+import type { LoginStatusDto, ManagedUserDto, PagedResult, UserRole } from "@/lib/api/types";
 import { useAuthGuard } from "@/lib/api/useAuthGuard";
 import { createManagedUser, getManagedUsers, setUserBlocked } from "@/lib/api/users";
+import { getLoginSwitch, setLoginsDisabled } from "@/lib/api/settings";
 
 type RoleFilter = "" | UserRole;
 
@@ -159,6 +160,54 @@ function BlockDialog({ user, blocked, saving, error, onCancel, onConfirm }: { us
   );
 }
 
+// Confirm turning sign-in off (with the message people will see) or back on.
+function LoginSwitchDialog({
+  turningOff,
+  saving,
+  error,
+  onCancel,
+  onConfirm,
+}: {
+  turningOff: boolean;
+  saving: boolean;
+  error: string;
+  onCancel: () => void;
+  onConfirm: (message: string) => void;
+}) {
+  const [message, setMessage] = useState("");
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={saving ? undefined : onCancel}>
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${turningOff ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"}`}>
+          {turningOff ? <PowerOff className="h-5 w-5" /> : <Power className="h-5 w-5" />}
+        </div>
+        <h2 className="mt-4 text-lg font-semibold text-slate-900">{turningOff ? "Disable all logins?" : "Turn logins back on?"}</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          {turningOff
+            ? "Nobody can sign in, and everyone who is signed in right now — admins and sellers — is signed out within about 15 seconds. Super users are not affected, so you can turn it back on."
+            : "Admins and sellers will be able to sign in again straight away."}
+        </p>
+
+        {turningOff && (
+          <label className="mt-4 block">
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">Message shown to people <span className="font-normal text-slate-400">(optional)</span></span>
+            <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} maxLength={300} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-[var(--brand)] focus:bg-white" placeholder="e.g. We're upgrading the system. Back at 6 PM." />
+          </label>
+        )}
+
+        {error && <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{error}</div>}
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button onClick={onCancel} disabled={saving} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">Cancel</button>
+          <button onClick={() => onConfirm(message.trim())} disabled={saving} className={`rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 ${turningOff ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}`}>
+            {saving ? "Saving…" : turningOff ? "Disable all logins" : "Turn logins on"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function UsersPage() {
   const ready = useAuthGuard("SuperUser");
   const meId = getSession()?.userId;
@@ -174,10 +223,37 @@ export default function UsersPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
+  const [loginStatus, setLoginStatus] = useState<LoginStatusDto | null>(null);
+  const [switchOpen, setSwitchOpen] = useState(false);
+  const [switchSaving, setSwitchSaving] = useState(false);
+  const [switchError, setSwitchError] = useState("");
+
   const [addOpen, setAddOpen] = useState(false);
   const [pending, setPending] = useState<{ user: ManagedUserDto; blocked: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+
+  useEffect(() => {
+    if (!ready) return;
+    getLoginSwitch().then(setLoginStatus).catch(() => {});
+  }, [ready]);
+
+  const confirmSwitch = async (message: string) => {
+    if (!loginStatus) return;
+    setSwitchSaving(true);
+    setSwitchError("");
+    try {
+      const turningOff = !loginStatus.loginsDisabled;
+      const next = await setLoginsDisabled(turningOff, message);
+      setLoginStatus(next);
+      setNotice(turningOff ? "All logins are disabled. Everyone except super users will be signed out shortly." : "Logins are back on.");
+      setSwitchOpen(false);
+    } catch (err) {
+      setSwitchError(err instanceof ApiError ? err.errors[0] ?? err.message : "Couldn't change the setting. Please try again.");
+    } finally {
+      setSwitchSaving(false);
+    }
+  };
 
   // Debounce so typing doesn't fire a request per keystroke.
   useEffect(() => {
@@ -240,6 +316,42 @@ export default function UsersPage() {
           Add user
         </button>
       </div>
+
+      {loginStatus && (
+        <section
+          className={`flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-4 shadow-sm ${loginStatus.loginsDisabled ? "border-red-200 bg-red-50" : "border-slate-200 bg-white"}`}
+          aria-label="Login access"
+        >
+          <div className="flex items-start gap-3">
+            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${loginStatus.loginsDisabled ? "bg-red-100 text-red-600" : "bg-emerald-50 text-emerald-600"}`}>
+              {loginStatus.loginsDisabled ? <PowerOff className="h-5 w-5" /> : <Power className="h-5 w-5" />}
+            </span>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base font-semibold text-slate-900">Login access</h2>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${loginStatus.loginsDisabled ? "bg-red-100 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>
+                  {loginStatus.loginsDisabled ? "All logins disabled" : "Logins are on"}
+                </span>
+              </div>
+              <p className="mt-0.5 max-w-xl text-sm text-slate-600">
+                {loginStatus.loginsDisabled
+                  ? `Admins and sellers can't sign in and were signed out. Super users are not affected. Message shown: “${loginStatus.message}”`
+                  : "Switch every sign-in off for a while, for example during maintenance. Everyone who is signed in is signed out automatically."}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setSwitchError("");
+              setSwitchOpen(true);
+            }}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white ${loginStatus.loginsDisabled ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"}`}
+          >
+            {loginStatus.loginsDisabled ? <Power className="h-4 w-4" /> : <PowerOff className="h-4 w-4" />}
+            {loginStatus.loginsDisabled ? "Turn logins back on" : "Disable all logins"}
+          </button>
+        </section>
+      )}
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -374,6 +486,10 @@ export default function UsersPage() {
             setReload((n) => n + 1);
           }}
         />
+      )}
+
+      {switchOpen && loginStatus && (
+        <LoginSwitchDialog turningOff={!loginStatus.loginsDisabled} saving={switchSaving} error={switchError} onCancel={() => setSwitchOpen(false)} onConfirm={confirmSwitch} />
       )}
 
       {pending && (

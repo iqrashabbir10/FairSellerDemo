@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { CreditCard, House, KeyRound, Menu, MessageSquareText, Package, Settings, ShieldCheck, ShoppingBag, Tags, Users, WalletCards, X, LogOut } from "lucide-react";
+import { useSessionWatch } from "@/lib/api/useSessionWatch";
 import { clearSession, getSession } from "@/lib/api/session";
 import type { UserRole } from "@/lib/api/types";
 import { keepSupportConnectionAlive, stopSupportConnection } from "@/lib/signalr/supportHub";
@@ -132,6 +133,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   // Staying connected to the chat hub while signed in is what makes this user show as "online" to the other side.
   useEffect(() => keepSupportConnectionAlive(), []);
+  // Signs this screen out by itself if the account is blocked or sign-in gets switched off.
+  useSessionWatch();
 
   const handleLogout = () => {
     void stopSupportConnection();

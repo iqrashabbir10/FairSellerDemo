@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { BarChart3, ListChecks, Menu, MessageSquareText, Package, Settings, ShoppingBag, WalletCards, X, LogOut } from "lucide-react";
+import { useSessionWatch } from "@/lib/api/useSessionWatch";
 import { clearSession } from "@/lib/api/session";
 import { keepSupportConnectionAlive, stopSupportConnection } from "@/lib/signalr/supportHub";
 import { logout } from "@/lib/api/auth";
@@ -17,7 +18,7 @@ const navigation = [
   { label: "Products", href: "/seller/products", icon: Package },
   { label: "My Listings", href: "/seller/my-listings", icon: ListChecks },
   { label: "Orders", href: "/seller/orders", icon: ShoppingBag },
-  { label: "Wallet / Withdraw", href: "/seller/wallet", icon: WalletCards },
+  { label: "Money Withdraw", href: "/seller/wallet", icon: WalletCards },
   { label: "Conversations", href: "/seller/conversations", icon: MessageSquareText },
   { label: "Profile & Password", href: "/seller/profile", icon: Settings },
 ];
@@ -105,6 +106,8 @@ export default function SellerLayout({ children }: { children: ReactNode }) {
 
   // Staying connected to the chat hub while signed in is what makes this user show as "online" to the other side.
   useEffect(() => keepSupportConnectionAlive(), []);
+  // Signs this screen out by itself if the account is blocked or sign-in gets switched off.
+  useSessionWatch();
 
   const handleLogout = () => {
     void stopSupportConnection();

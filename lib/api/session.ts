@@ -30,3 +30,25 @@ export function setSession(session: AuthSession) {
 export function clearSession() {
   window.localStorage.removeItem(STORAGE_KEY);
 }
+
+// Set just before the app signs someone out because of the server (account blocked, sign-in switched off), and shown
+// once on the login page. sessionStorage survives the redirect but not a new tab.
+const LOGOUT_REASON_KEY = "wayfeir-logout-reason";
+
+export function setLogoutReason(message: string) {
+  try {
+    window.sessionStorage.setItem(LOGOUT_REASON_KEY, message);
+  } catch {
+    // storage blocked - the login page just won't show the explanation
+  }
+}
+
+export function takeLogoutReason(): string | null {
+  try {
+    const reason = window.sessionStorage.getItem(LOGOUT_REASON_KEY);
+    window.sessionStorage.removeItem(LOGOUT_REASON_KEY);
+    return reason;
+  } catch {
+    return null;
+  }
+}

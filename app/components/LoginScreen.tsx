@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Eye, EyeOff, Lock } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Lock, TriangleAlert } from "lucide-react";
 import { login } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
-import { clearSession, getSession, setSession } from "@/lib/api/session";
+import { clearSession, getSession, setSession, takeLogoutReason } from "@/lib/api/session";
+import { getLoginStatus } from "@/lib/api/settings";
 import { getSellerProfile } from "@/lib/api/seller";
 import { homeFor } from "@/lib/api/roles";
 
@@ -22,10 +23,8 @@ function friendlyLoginError(err: unknown) {
       // Lockout has its own wording from the server; everything else is a credentials problem.
       return /too many/i.test(err.message) ? err.message : "Incorrect email or password. Please check your details and try again.";
     }
-    if (err.status === 403) {
-      // A blocked account gets its own explanation from the server.
-      return /blocked/i.test(err.message) ? err.message : "This account doesn't have access to sign in. Please contact support.";
-    }
+    // 403s carry a message written for people: blocked account, sign-in switched off, not allowed to sign in.
+    if (err.status === 403) return err.message || "This account doesn't have access to sign in. Please contact support.";
     if (err.status >= 500) return "Something went wrong on our side. Please try again in a moment.";
   }
   return "Unable to sign in. Please try again.";
@@ -42,6 +41,9 @@ export function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  // Why this person was just signed out, and whether sign-in is currently switched off.
+  const [signedOutReason, setSignedOutReason] = useState<string | null>(null);
+  const [loginsOffMessage, setLoginsOffMessage] = useState<string | null>(null);
 
   // Already signed in: skip the form.
   useEffect(() => {
@@ -52,6 +54,15 @@ export function LoginScreen() {
     }
     if (session) router.push(homeFor(session.role));
   }, [router]);
+
+  useEffect(() => {
+    // (Only set when there is one: React dev mode runs this effect twice and the second read would clear it.)
+    const reason = takeLogoutReason();
+    if (reason) setSignedOutReason(reason);
+    getLoginStatus()
+      .then((status) => setLoginsOffMessage(status.loginsDisabled ? status.message ?? "Sign-in is temporarily unavailable. Please try again shortly." : null))
+      .catch(() => {});
+  }, []);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -110,6 +121,16 @@ export function LoginScreen() {
           </div>
 
           <form onSubmit={submit} className="space-y-4">
+            {(loginsOffMessage || signedOutReason) && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800" role="status">
+                <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  {signedOutReason && <p className="font-semibold">You were signed out.</p>}
+                  <p>{loginsOffMessage ?? signedOutReason}</p>
+                </div>
+              </div>
+            )}
+
             <div>
               <label htmlFor="login-email" className="mb-2 block text-sm font-medium text-slate-700">Email</label>
               <input

@@ -150,7 +150,7 @@ export default function SellerDashboardPage() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <GradientStatCard label="Total products" value={listings.length.toLocaleString()} icon={Package} gradient="green" href="/seller/my-listings" foot={<span>Listed for sale</span>} />
             <GradientStatCard label="Total orders" value={(dashboard?.totalOrders ?? orders.length).toLocaleString()} icon={ShoppingCart} gradient="blue" href="/seller/orders" foot={<span>{dashboard?.pendingOrders ?? stats.all.New} pending</span>} />
-            <GradientStatCard label="Wallet balance" value={money(dashboard?.walletBalance ?? 0)} icon={Wallet} gradient="amber" href="/seller/wallet" foot={<span>{dashboard?.pendingWithdrawals ?? 0} pending withdrawals</span>} />
+            <GradientStatCard label="Wallet balance" value={money(dashboard?.walletBalance ?? 0)} icon={Wallet} gradient="amber" href="/seller/wallet" foot={<span>{money(dashboard?.pendingBalance ?? 0)} pending · {dashboard?.pendingWithdrawals ?? 0} withdrawal{(dashboard?.pendingWithdrawals ?? 0) === 1 ? "" : "s"} in review</span>} />
             <GradientStatCard label="Total sales" value={money(stats.totalSales)} icon={CircleDollarSign} gradient="pink" foot={<span>Expected profit {money(dashboard?.expectedProfitTotal ?? 0)}</span>} />
           </div>
 

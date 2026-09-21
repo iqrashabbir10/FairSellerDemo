@@ -46,7 +46,7 @@ export type PaymentStatus = "PendingVerification" | "Verified" | "Rejected";
 
 export type WithdrawalStatus = "Pending" | "Approved" | "Rejected" | "Paid";
 
-export type WithdrawalMethod = "BankTransfer" | "CashOnHand" | "MobileWallet";
+export type WithdrawalMethod = "BankTransfer" | "Crypto";
 
 export type SupportStatus = "Open" | "Pending" | "Resolved" | "Closed";
 
@@ -76,6 +76,14 @@ export interface CreateManagedUserPayload {
   password: string;
   role: "Admin" | "SuperUser";
   mustChangePassword: boolean;
+}
+
+// ---- Login switch (super user) ----
+
+export interface LoginStatusDto {
+  loginsDisabled: boolean;
+  message: string | null;
+  updatedAtUtc: string | null;
 }
 
 // ---- Auth ----
@@ -160,6 +168,7 @@ export interface SellerDashboardDto {
   walletBalance: number;
   expectedProfitTotal: number;
   pendingWithdrawals: number;
+  pendingBalance?: number;
 }
 
 export interface ProductDto {
@@ -218,6 +227,8 @@ export interface WalletDto {
   id: string;
   sellerId: string;
   balance: number;
+  // Order amounts of picked orders that aren't delivered yet.
+  pendingBalance?: number;
   currency: string;
 }
 
@@ -275,12 +286,26 @@ export interface WithdrawalDto {
   amount: number;
   status: WithdrawalStatus;
   requestedAtUtc: string;
+  // Filled in for the admin list.
+  sellerName?: string | null;
+  shopName?: string | null;
+  method?: WithdrawalMethod | null;
+  // Readable lines, e.g. "Account holder: …\nBank: …\nAccount number: …\nIFSC: …".
+  paymentDetails?: string | null;
+  note?: string | null;
+  processedAtUtc?: string | null;
 }
 
+// Bank transfer needs the four bank fields; crypto needs the wallet address (network is optional).
 export interface CreateWithdrawalPayload {
   amount: number;
   withdrawalMethod: WithdrawalMethod;
-  paymentDetails: string;
+  accountHolderName?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifsc?: string;
+  network?: string;
+  walletAddress?: string;
 }
 
 export interface SupportConversationDto {

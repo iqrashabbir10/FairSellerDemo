@@ -1,6 +1,6 @@
 // Shared fetch helper that unwraps the ApiResponse<T> envelope used by every endpoint.
 import type { ApiResponse, PagedRequest } from "./types";
-import { clearSession, getSession } from "./session";
+import { clearSession, getSession, setLogoutReason } from "./session";
 import { API_BASE_URL as BASE_URL } from "./config";
 
 export class ApiError extends Error {
@@ -121,6 +121,8 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
       }
     }
     if (response.status === 401 && auth) {
+      // Signed out by the server (blocked account / sign-in switched off): remember why for the login page.
+      if (typeof window !== "undefined" && payload?.errors?.some((e) => e === "LOGINS_DISABLED" || e === "ACCOUNT_BLOCKED")) setLogoutReason(message);
       clearSession();
       if (typeof window !== "undefined" && window.location.pathname !== "/") {
         window.location.href = "/";
