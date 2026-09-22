@@ -6,7 +6,7 @@ import { Check, Eye, EyeOff, KeyRound, ShieldCheck } from "lucide-react";
 import { setNewPassword } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { clearSession, getSession, setSession } from "@/lib/api/session";
-import { homeFor } from "@/lib/api/roles";
+import { homeFor, loginFor } from "@/lib/api/roles";
 import { Banner, Field, inputClass } from "@/app/components/ProfileUi";
 
 const rules = (value: string) => [{ label: "At least 8 characters", ok: value.length >= 8 }];
@@ -55,8 +55,9 @@ export default function SetPasswordPage() {
   };
 
   const signOut = () => {
+    const loginPath = loginFor(getSession()?.role);
     clearSession();
-    router.replace("/");
+    router.replace(loginPath);
   };
 
   if (!ready) return null;

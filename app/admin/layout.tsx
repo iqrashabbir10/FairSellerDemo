@@ -9,6 +9,7 @@ import type { UserRole } from "@/lib/api/types";
 import { keepSupportConnectionAlive, stopSupportConnection } from "@/lib/signalr/supportHub";
 import { logout } from "@/lib/api/auth";
 import { SidebarUser } from "@/app/components/SidebarUser";
+import { Logo } from "@/app/components/Logo";
 import { BackToTop } from "@/app/components/BackToTop";
 import { ThemePicker } from "@/app/components/ThemePicker";
 import { NotificationBell } from "@/app/components/NotificationBell";
@@ -45,8 +46,7 @@ function Sidebar({ open, onClose, onLogout, role }: { open: boolean; onClose: ()
     <>
       <aside className="hidden w-[260px] border-r border-slate-200 bg-[#f7f5f3] lg:flex lg:flex-col">
         <div className="flex items-center gap-3 border-b border-slate-200 px-6 py-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand)] text-xs font-bold text-white">W</div>
-          <div className="text-lg font-semibold text-slate-900">WayFair</div>
+          <Logo size="sm" className="text-slate-900" />
         </div>
 
         <nav className="flex-1 px-3 py-4">
@@ -84,8 +84,7 @@ function Sidebar({ open, onClose, onLogout, role }: { open: boolean; onClose: ()
           <div className="relative h-full w-[280px] bg-[#f7f5f3] p-3 shadow-xl" onClick={(event) => event.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between border-b border-slate-200 px-3 py-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand)] text-xs font-bold text-white">W</div>
-                <span className="text-lg font-semibold text-slate-900">WayFair</span>
+                <Logo size="sm" className="text-slate-900" />
               </div>
               <button onClick={onClose} className="rounded-lg p-2 text-slate-600 hover:bg-white">
                 <X className="h-4 w-4" />
@@ -140,7 +139,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     void stopSupportConnection();
     logout().catch(() => {});
     clearSession();
-    router.push("/");
+    // Admins (and super users) always go back to the admin login page.
+    router.push("/auth/admin");
   };
 
   return (
@@ -161,8 +161,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 </button>
 
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-sm font-bold">W</div>
-                  <span className="text-xl font-semibold tracking-tight">WayFair</span>
+                  <Logo size="md" tone="white" className="text-white" wordmarkClassName="hidden sm:inline" />
                 </div>
               </div>
 

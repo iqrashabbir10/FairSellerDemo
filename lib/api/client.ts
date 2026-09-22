@@ -2,6 +2,7 @@
 import type { ApiResponse, PagedRequest } from "./types";
 import { clearSession, getSession, setLogoutReason } from "./session";
 import { API_BASE_URL as BASE_URL } from "./config";
+import { loginFor } from "./roles";
 
 export class ApiError extends Error {
   status: number;
@@ -123,9 +124,15 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     if (response.status === 401 && auth) {
       // Signed out by the server (blocked account / sign-in switched off): remember why for the login page.
       if (typeof window !== "undefined" && payload?.errors?.some((e) => e === "LOGINS_DISABLED" || e === "ACCOUNT_BLOCKED")) setLogoutReason(message);
+      // Route back to the login page for whichever portal this was. A session that existed until just now (blocked /
+      // logins switched off mid-visit) tells us the role directly; a call with no session at all (e.g. a background
+      // fetch racing the auth guard on an already-signed-out page) falls back to guessing from the current URL.
+      const sessionRole = getSession()?.role;
+      const onAdminSide = typeof window !== "undefined" && (window.location.pathname.startsWith("/admin") || window.location.pathname.startsWith("/auth/admin"));
+      const loginPath = sessionRole ? loginFor(sessionRole) : onAdminSide ? "/auth/admin" : "/";
       clearSession();
-      if (typeof window !== "undefined" && window.location.pathname !== "/") {
-        window.location.href = "/";
+      if (typeof window !== "undefined" && window.location.pathname !== loginPath) {
+        window.location.href = loginPath;
       }
     }
     throw new ApiError(message, response.status, payload?.errors ?? []);

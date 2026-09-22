@@ -1,6 +1,6 @@
-import { LoginScreen } from "@/app/components/LoginScreen";
+import { SellerLoginScreen } from "@/app/components/LoginScreen";
 
-// One login for admins and sellers. Sellers register through the link an admin shares (/auth/seller-register).
+// Default page = seller login (with "Register as a new seller"). Admins sign in at /auth/admin.
 export default function LoginPage() {
-  return <LoginScreen />;
+  return <SellerLoginScreen />;
 }

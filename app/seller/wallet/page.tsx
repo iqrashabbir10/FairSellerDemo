@@ -132,7 +132,7 @@ export default function SellerWalletPage() {
     <div className="space-y-6">
       <div>
         <p className="text-sm font-medium text-slate-500">Wallet</p>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Money Withdrawal</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Money Withdrawal</h1>
       </div>
 
       {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{error}</div>}
@@ -141,14 +141,8 @@ export default function SellerWalletPage() {
         <GradientStatCard label="Wallet Balance" value={loading ? "…" : money(balance)} icon={Landmark} gradient="blue" foot={<span>Available for withdrawal</span>} />
         <GradientStatCard label="Pending" value={loading ? "…" : money(wallet?.pendingBalance ?? 0)} icon={CircleDollarSign} gradient="green" foot={<span>Total pending amount</span>} />
       </div>
-      <p className="flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
-        <span>
-          When you pick an order, its amount waits in <span className="font-semibold">Pending</span>. When the admin delivers it, the amount moves to your <span className="font-semibold">Wallet Balance</span> and can be withdrawn.
-        </span>
-      </p>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[1fr_1.1fr]">
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_1.1fr]">
         <ColorPanel title="Request a Withdrawal" accent="bg-[var(--brand)]">
           <form onSubmit={submit} className="space-y-4" noValidate>
             <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm">
@@ -235,12 +229,12 @@ export default function SellerWalletPage() {
               <ul className="space-y-3">
                 {withdrawals.map((item) => (
                   <li key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="min-w-0">
                         <div className="font-semibold text-slate-900">{money(item.amount)}</div>
                         <div className="text-xs text-slate-500">{METHOD_LABEL[item.method ?? ""] ?? item.method} · {new Date(item.requestedAtUtc).toLocaleDateString()}</div>
                       </div>
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLE[item.status]}`}>
+                      <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLE[item.status]}`}>
                         {item.status === "Pending" && <Clock3 className="h-3 w-3" />}
                         {item.status === "Pending" ? "Pending review" : item.status}
                       </span>

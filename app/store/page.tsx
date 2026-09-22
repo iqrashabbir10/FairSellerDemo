@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { Logo } from "@/app/components/Logo";
 import { Open_Sans } from "next/font/google";
 
 const openSans = Open_Sans({ subsets: ["latin"], weight: ["400", "600", "700", "800"], display: "swap" });
@@ -364,8 +365,8 @@ function Header() {
   return (
     <header className={`sticky top-0 z-40 bg-white transition-shadow duration-300 ${scrolled ? "shadow-md" : "shadow-none"}`}>
       <div className="mx-auto flex max-w-[1280px] items-center gap-3 px-4 py-3">
-        <Link href="/store" className={`shrink-0 rounded text-2xl font-extrabold tracking-tight text-[#E6302D] ${FOCUS}`} aria-label="WayFair home">
-          Way<span className="text-[#1E2230]">Fair</span>
+<Link href="/store" className={`shrink-0 rounded ${FOCUS}`} aria-label="WayFair home">
+          <Logo size="sm" className="text-[#1E2230]" />
         </Link>
 
         <form role="search" onSubmit={(event) => event.preventDefault()} className="relative min-w-0 flex-1">
@@ -480,7 +481,7 @@ function LoginTile() {
                 <LockIcon className="h-7 w-7" />
               </span>
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#E6302D]">Sellers &amp; admins</p>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#E6302D]">Sellers</p>
                 <h2 className="mt-1 text-xl font-extrabold leading-tight text-[#1E2230] sm:text-2xl">Already selling with WayFair?</h2>
                 <p className="mt-1 max-w-xl text-sm text-[#6B7280]">Sign in to your account to pick up where you left off.</p>
                 <ul className="mt-3 flex flex-wrap gap-2">
@@ -658,7 +659,7 @@ export default function StorePage() {
       <footer className="bg-[#E6302D] text-white">
         <div className="mx-auto grid max-w-[1280px] gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-5">
-            <span className="inline-block rounded-lg bg-gradient-to-br from-white to-[#FFD9D6] px-4 py-2 text-xl font-extrabold tracking-widest text-[#E6302D]">WAYFAIR</span>
+            <Logo size="md" tone="white" className="text-white" />
             <div>
               <Link href="/auth/seller-register" className={`inline-flex h-11 items-center rounded-full bg-white px-5 text-sm font-bold text-[#E6302D] transition hover:bg-[#FDECEE] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6302D]`}>
                 Register Your store

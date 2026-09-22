@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { UserRole } from "./types";
 import { getSession } from "./session";
-import { isAdminRole } from "./roles";
+import { isAdminRole, loginFor } from "./roles";
 
-/** Redirects to the login page unless a session with the given role exists. */
+/** Redirects to the right login page (seller or admin) unless a session with the given role exists. */
 export function useAuthGuard(role: UserRole) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
@@ -16,7 +16,7 @@ export function useAuthGuard(role: UserRole) {
     // A super user is an admin too, so the Admin guard lets them through; the SuperUser guard is strict.
     const allowed = !!session && (session.role === role || (role === "Admin" && isAdminRole(session.role)));
     if (!session || !allowed) {
-      router.replace("/");
+      router.replace(loginFor(role));
       return;
     }
     if (session.mustChangePassword) {
