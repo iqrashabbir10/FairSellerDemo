@@ -3,6 +3,7 @@ import type { ApiResponse, PagedRequest } from "./types";
 import { clearSession, getSession, setLogoutReason } from "./session";
 import { API_BASE_URL as BASE_URL } from "./config";
 import { loginFor } from "./roles";
+import { normalizeUtc } from "./utc";
 
 export class ApiError extends Error {
   status: number;
@@ -50,7 +51,7 @@ function normalizePayload<T>(raw: unknown): ApiResponse<T> | null {
     success: (body.success ?? body.Success) as boolean,
     message: (body.message ?? body.Message ?? null) as string | null,
     errors: ((body.errors ?? body.Errors) as string[] | undefined) ?? [],
-    data: (body.data ?? body.Data) as T,
+    data: normalizeUtc((body.data ?? body.Data) as T),
   };
 }
 

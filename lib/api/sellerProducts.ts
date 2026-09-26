@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import type { AddSellerProductRequest, ProductDto, SellerProductDto } from "./types";
+import type { AddSellerProductRequest, AddSellerProductsBulkRequest, AddSellerProductsBulkResult, ProductDto, SellerProductDto } from "./types";
 
 export function getSellerProductById(id: string) {
   return apiFetch<ProductDto>(`/api/seller/products/${id}`);
@@ -12,4 +12,9 @@ const LEGACY_LISTING_QUANTITY = 1_000_000;
 
 export function addSellerProduct(request: AddSellerProductRequest) {
   return apiFetch<SellerProductDto>("/api/seller/products", { method: "POST", body: { ...request, quantity: LEGACY_LISTING_QUANTITY } });
+}
+
+// Adds many products to the seller's listings in a single request instead of one call per product.
+export function addSellerProductsBulk(request: AddSellerProductsBulkRequest) {
+  return apiFetch<AddSellerProductsBulkResult>("/api/seller/products/bulk", { method: "POST", body: request });
 }

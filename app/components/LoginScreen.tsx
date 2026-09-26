@@ -30,8 +30,8 @@ const ALLOWED_ON: Record<Portal, (role: UserRole) => boolean> = {
 
 // Someone signing in on the wrong portal is pointed at the right one instead of just being refused.
 const WRONG_PORTAL: Record<Portal, { message: string; href: string; label: string }> = {
-  seller: { message: "That's an admin account. Admins sign in on the admin login page.", href: "/auth/admin", label: "Go to admin login" },
-  admin: { message: "That's a seller account. Sellers sign in on the seller login page.", href: "/", label: "Go to seller login" },
+ seller: { message: "That's an admin account. Admins sign in on the admin login page.", href: "", label: "" },
+  admin: { message: "That's a seller account. Sellers sign in on the seller login page.", href: "", label: "" },
 };
 
 function friendlyLoginError(err: unknown) {

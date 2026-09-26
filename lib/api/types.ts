@@ -380,6 +380,16 @@ export interface AddSellerProductRequest {
   productId: string;
 }
 
+// Same as above but for many products in one request (e.g. "select all" on the catalog page).
+export interface AddSellerProductsBulkRequest {
+  productIds: string[];
+}
+
+export interface AddSellerProductsBulkResult {
+  added: SellerProductDto[];
+  notFound: string[];
+}
+
 export interface SellerProductDto {
   id: string;
   sellerId: string;

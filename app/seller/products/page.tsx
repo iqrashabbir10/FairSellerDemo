@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Layers, Plus, Search } from "lucide-react";
 import { useResponsiveView, ViewToggle } from "@/app/components/ViewToggle";
 import { Pagination } from "@/app/components/Pagination";
 import { ProductCard } from "@/app/components/ProductCard";
@@ -9,6 +9,7 @@ import { ProductThumbnail } from "@/app/components/ProductThumbnail";
 import { ProductDetailModal } from "@/app/components/ProductDetailModal";
 import { AddToListingModal } from "@/app/components/AddToListingModal";
 import { getSellerProducts } from "@/lib/api/seller";
+import { addSellerProductsBulk } from "@/lib/api/sellerProducts";
 import { saveListing } from "@/lib/api/sellerListings";
 import { ApiError } from "@/lib/api/client";
 import type { PagedResult, ProductDto } from "@/lib/api/types";
@@ -28,6 +29,9 @@ export default function SellerProductsPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [addTarget, setAddTarget] = useState<ProductDto | null>(null);
   const [notice, setNotice] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkAdding, setBulkAdding] = useState(false);
+  const selectAllRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!ready) return;
@@ -53,6 +57,55 @@ export default function SellerProductsPage() {
 
   // The API has no search parameter, so search filters the current page.
   const items = (result?.items ?? []).filter((item) => item.name.toLowerCase().includes(search.toLowerCase()) || item.sku?.toLowerCase().includes(search.toLowerCase()));
+  const selectableItems = items.filter((item) => item.isAvailable);
+  const allSelected = selectableItems.length > 0 && selectableItems.every((item) => selected.has(item.id));
+  const someSelected = selectableItems.some((item) => selected.has(item.id));
+
+  if (selectAllRef.current) selectAllRef.current.indeterminate = someSelected && !allSelected;
+
+  const toggleSelected = (id: string) => {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelected((current) => {
+      if (allSelected) {
+        const next = new Set(current);
+        selectableItems.forEach((item) => next.delete(item.id));
+        return next;
+      }
+      const next = new Set(current);
+      selectableItems.forEach((item) => next.add(item.id));
+      return next;
+    });
+  };
+
+  // Selections persist across page navigation, so this adds every product id picked so far —
+  // not just the ones on the page currently on screen — in a single request, however many there are.
+  const handleBulkAdd = async () => {
+    const targetIds = Array.from(selected);
+    if (targetIds.length === 0) return;
+    setBulkAdding(true);
+    setError("");
+    try {
+      const result = await addSellerProductsBulk({ productIds: targetIds });
+      result.added.forEach(saveListing);
+      setSelected(new Set());
+      setNotice(
+        `${result.added.length} product${result.added.length === 1 ? "" : "s"} added to your listings.` +
+          (result.notFound.length ? ` ${result.notFound.length} couldn't be found and were skipped.` : ""),
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.errors[0] ?? err.message : "Failed to add the selected products.");
+    } finally {
+      setBulkAdding(false);
+    }
+  };
 
   const addButton = (product: ProductDto) => (
     <button
@@ -83,6 +136,39 @@ export default function SellerProductsPage() {
           </div>
           <ViewToggle value={view} onChange={setView} />
         </div>
+
+        {selectableItems.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input
+                  ref={selectAllRef}
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                  className="h-4 w-4 rounded border-slate-300 text-[var(--brand)] focus:ring-[var(--brand)]"
+                />
+                Select all on this page ({selectableItems.length})
+              </label>
+              {selected.size > 0 && (
+                <span className="text-xs font-medium text-slate-500">
+                  {selected.size} selected across all pages
+                </span>
+              )}
+            </div>
+
+            {selected.size > 0 && (
+              <button
+                onClick={handleBulkAdd}
+                disabled={bulkAdding}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[var(--brand)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--brand-hover)] disabled:opacity-60"
+              >
+                <Layers className="h-3.5 w-3.5" />
+                {bulkAdding ? "Adding…" : `Add ${selected.size} selected to My Listings`}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{notice}</div>}
@@ -95,7 +181,23 @@ export default function SellerProductsPage() {
       ) : view === "grid" ? (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((product) => (
-            <ProductCard key={product.id} product={product} showStatus={false} onClick={() => setDetailId(product.id)} footer={<div className="flex justify-end">{addButton(product)}</div>} />
+            <div key={product.id} className="relative">
+              {product.isAvailable && (
+                <label
+                  onClick={(event) => event.stopPropagation()}
+                  className="absolute right-3 top-3 z-10 inline-flex h-6 w-6 items-center justify-center rounded-md bg-white/90 shadow-sm backdrop-blur"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.has(product.id)}
+                    onChange={() => toggleSelected(product.id)}
+                    aria-label={`Select ${product.name}`}
+                    className="h-4 w-4 rounded border-slate-300 text-[var(--brand)] focus:ring-[var(--brand)]"
+                  />
+                </label>
+              )}
+              <ProductCard product={product} showStatus={false} onClick={() => setDetailId(product.id)} footer={<div className="flex justify-end">{addButton(product)}</div>} />
+            </div>
           ))}
         </div>
       ) : (
@@ -103,6 +205,15 @@ export default function SellerProductsPage() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleSelectAll}
+                    aria-label="Select all"
+                    className="h-4 w-4 rounded border-slate-300 text-[var(--brand)] focus:ring-[var(--brand)]"
+                  />
+                </th>
                 <th className="px-4 py-3 font-medium">Image</th>
                 <th className="px-4 py-3 font-medium">Product</th>
                 <th className="px-4 py-3 font-medium">Code</th>
@@ -115,6 +226,17 @@ export default function SellerProductsPage() {
             <tbody>
               {items.map((product) => (
                 <tr key={product.id} onClick={() => setDetailId(product.id)} className="cursor-pointer border-b border-slate-200 last:border-b-0 hover:bg-slate-50">
+                  <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                    {product.isAvailable && (
+                      <input
+                        type="checkbox"
+                        checked={selected.has(product.id)}
+                        onChange={() => toggleSelected(product.id)}
+                        aria-label={`Select ${product.name}`}
+                        className="h-4 w-4 rounded border-slate-300 text-[var(--brand)] focus:ring-[var(--brand)]"
+                      />
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <ProductThumbnail name={product.name} imageUrls={product.imageUrls} className="h-10 w-10" bare />
                   </td>

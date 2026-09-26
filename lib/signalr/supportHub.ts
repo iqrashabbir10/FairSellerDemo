@@ -4,6 +4,7 @@
 import * as signalR from "@microsoft/signalr";
 import { API_BASE_URL } from "@/lib/api/config";
 import { getSession } from "@/lib/api/session";
+import { normalizeUtc } from "@/lib/api/utc";
 import type { NotificationPushDto, SupportConversationDto, SupportMessageDto } from "@/lib/api/types";
 
 // API_BASE_URL is already cleaned of trailing slashes and backslashes, so the path can't come out with a double slash.
@@ -187,14 +188,15 @@ export async function leaveConversation(conversationId: string) {
 // Each subscribe helper returns an unsubscribe function for effect cleanup.
 function subscribe<T>(event: string, handler: (payload: T) => void) {
   let disposed = false;
+  const wrapped = (payload: T) => handler(normalizeUtc(payload));
   getSupportConnection()
     .then((conn) => {
-      if (!disposed) conn.on(event, handler);
+      if (!disposed) conn.on(event, wrapped);
     })
     .catch(() => {});
   return () => {
     disposed = true;
-    connection?.off(event, handler);
+    connection?.off(event, wrapped);
   };
 }
 

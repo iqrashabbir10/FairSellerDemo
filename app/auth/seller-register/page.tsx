@@ -70,6 +70,7 @@ function validateStep(step: number, form: FormState, file: File | null, phoneVal
     if (!form.fullName.trim()) errors.fullName = "Please enter your full name.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors.email = "Enter a valid email address, like you@example.com.";
     if (!phoneValid) errors.phoneNumber = "Enter a valid phone number for the selected country.";
+    if (!form.inviteCode.trim()) errors.inviteCode = "Enter the invitation code you were given.";
     if (!passwordRules(form.password).every((r) => r.ok)) errors.password = "Your password must be at least 8 characters.";
     if (form.confirmPassword !== form.password) errors.confirmPassword = "The two passwords don't match.";
   }
@@ -90,7 +91,7 @@ function validateStep(step: number, form: FormState, file: File | null, phoneVal
 
 // Points the user back at the step that a server-side error belongs to.
 function stepForServerError(message: string) {
-  if (/e-?mail|invite|password|phone|full name/i.test(message)) return 0;
+  if (/e-?mail|invit|password|phone|full name/i.test(message)) return 0;
   if (/shop/i.test(message)) return 1;
   return 2;
 }
@@ -313,8 +314,8 @@ function SellerRegisterForm({ initialInvite }: { initialInvite: string }) {
                   <span className="mt-1 block text-xs text-slate-400">Pick your country, then type your number — we&apos;ll format it for you.</span>
                 )}
               </div>
-              <Field label="Invitation code">
-                <input value={form.inviteCode} onChange={(e) => update("inviteCode", e.target.value)} placeholder="" className={inputClass} />
+              <Field label="Invitation code" error={errors.inviteCode}>
+                <input value={form.inviteCode} onChange={(e) => update("inviteCode", e.target.value)} autoComplete="off" inputMode="numeric" placeholder="Enter your invitation code" className={`${inputClass} ${ring("inviteCode")}`} />
               </Field>
 
               <Field label="Password" error={errors.password}>

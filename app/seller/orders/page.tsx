@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Check, CheckCircle2, Copy, Eye, PackageCheck, Search, Truck, Wallet, X, ClipboardList, BadgeDollarSign } from "lucide-react";
-import { useResponsiveView, ViewToggle } from "@/app/components/ViewToggle";
+import { ViewToggle, type ViewMode } from "@/app/components/ViewToggle";
 import { ProductThumbnail } from "@/app/components/ProductThumbnail";
 import { getSellerOrders, getSellerWallet, pickSellerOrder } from "@/lib/api/seller";
 import { ApiError } from "@/lib/api/client";
@@ -73,6 +73,22 @@ function PickAction({
   );
 }
 
+// Cards read better than a wide table on a phone, so this page defaults to "grid" on narrow
+// screens and "list" once there's room for the table — the opposite default of useResponsiveView.
+function useOrdersDefaultView(): [ViewMode, (value: ViewMode) => void] {
+  const [view, setView] = useState<ViewMode>("grid");
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    setView(media.matches ? "list" : "grid");
+    const handleChange = (event: MediaQueryListEvent) => setView(event.matches ? "list" : "grid");
+    media.addEventListener("change", handleChange);
+    return () => media.removeEventListener("change", handleChange);
+  }, []);
+
+  return [view, setView];
+}
+
 const totalQuantity = (order: SellerOrderDto) => order.items.reduce((sum, item) => sum + item.quantity, 0);
 
 // "Wireless Headphones" or "Wireless Headphones + 2 more"
@@ -118,6 +134,10 @@ function OrderJourney({ status }: { status: OrderStatus }) {
       })}
     </ol>
   );
+}
+
+function FieldPill({ tone, children }: { tone: string; children: React.ReactNode }) {
+  return <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white ${tone}`}>{children}</span>;
 }
 
 function Stat({ label, value, tone = "default", icon }: { label: string; value: string; tone?: "default" | "brand" | "good"; icon?: React.ReactNode }) {
@@ -247,7 +267,7 @@ function OrderDetailsDialog({
 
 export default function SellerOrdersPage() {
   const ready = useAuthGuard("Seller");
-  const [view, setView] = useResponsiveView();
+  const [view, setView] = useOrdersDefaultView();
   const [orders, setOrders] = useState<SellerOrderDto[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -362,46 +382,41 @@ export default function SellerOrdersPage() {
           {filtered.map((order) => {
             return (
               <article key={order.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="truncate text-sm font-semibold text-slate-900">{order.orderNumber}</h2>
-                  <StatusBadge status={order.status} />
-                </div>
-                <ul className="mt-3 space-y-2">
-                  {order.items.slice(0, 3).map((item) => (
-                    <li key={item.productId} className="flex items-center gap-3">
-                      <ProductThumbnail name={item.productName} imageUrls={item.imageUrl ? [item.imageUrl] : []} className="h-12 w-12 shrink-0" bare />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-slate-800">{item.productName}</p>
-                        {item.sku && <p className="font-mono text-xs text-slate-400">{item.sku}</p>}
-                        <p className="text-xs text-slate-500">Qty: {item.quantity}</p>
-                      </div>
-                    </li>
-                  ))}
-                  {order.items.length > 3 && <li className="pl-1 text-xs font-medium text-slate-500">+ {order.items.length - 3} more product{order.items.length - 3 === 1 ? "" : "s"}</li>}
-                </ul>
-                <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <p className="text-xs text-slate-500">Order Total</p>
-                    <p className="font-medium text-slate-800">{currency.format(order.totalAmount)}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="min-w-0">
+                    <FieldPill tone="bg-red-500">Order ID</FieldPill>
+                    <p className="mt-1.5 break-words text-sm font-semibold text-slate-900">{order.orderNumber}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <FieldPill tone="bg-emerald-600">Date</FieldPill>
+                    <p className="mt-1.5 text-sm font-semibold text-slate-900">{dateTimeFormat.format(new Date(order.createdAtUtc))}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">Expected Profit</p>
-                    <p className="font-medium text-slate-800">{currency.format(order.expectedProfit)}</p>
+                    <FieldPill tone="bg-blue-600">Price</FieldPill>
+                    <p className="mt-1.5 text-sm font-semibold text-slate-900">{currency.format(order.totalAmount)}</p>
+                  </div>
+                  <div>
+                    <FieldPill tone="bg-amber-500">Profit</FieldPill>
+                    <p className="mt-1.5 text-sm font-semibold text-emerald-600">{currency.format(order.expectedProfit)}</p>
                   </div>
                 </div>
-                <div className="mt-3 flex items-center justify-between text-sm">
-                  <span className="text-xs text-slate-500">Cost to pick</span>
-                  <span className="font-medium text-slate-800">{currency.format(order.pickCost)}</span>
+
+                <div className="mt-4 flex items-end justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-slate-400">Status</p>
+                    <div className="mt-1"><StatusBadge status={order.status} /></div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedOrder(order)}
+                    aria-label={`View order ${order.orderNumber}`}
+                    title="View order"
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-[var(--brand)] hover:bg-[var(--brand)]/10"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </button>
                 </div>
-                <div className="mt-3 text-xs text-slate-500">{dateTimeFormat.format(new Date(order.createdAtUtc))}</div>
-                <PickAction order={order} balance={balance} onPick={(o) => { setPickError(""); setPickTarget(o); }} className="mt-4" />
-                <button
-                  onClick={() => setSelectedOrder(order)}
-                  className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                  View details
-                </button>
+
+                <PickAction order={order} balance={balance} onPick={(o) => { setPickError(""); setPickTarget(o); }} className="mt-3" />
               </article>
             );
           })}
